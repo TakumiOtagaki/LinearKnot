@@ -1,0 +1,4 @@
+case_id	length	max_splits	seq	structure_union	public_replay_g	public_replay_gprime	note
+s20260311_l30_0001	30	32	CUCGUUGAGUGAGAUGGGUGCCGACGCUCC	[[[((...)(]]]))(..(...).)(...)	...((...)(...))(..(...).)(...)	[[[.......]]].................	random density2 witness from sample=32 sweep; energy_buckets=3 admissible_splits=17 public_replay_energy=18.24
+s20260311_l30_0005	30	32	GGUUAACUAUAAGGUUGGCGUUGUCUGAAG	[[(..(...(...(....)))(.(]].)))	..(..(...(...(....)))(.(...)))	[[......................]]....	random density2 witness from sample=32 sweep; energy_buckets=6 admissible_splits=9 public_replay_energy=16.98
+s20260311_l50_0003	50	32	CUUUUUUCGAAGGCGGGUUCGUGGCUGUUGGGAGGGGUUGCGUCGGGGCC	.[((.(..])))((.(...))(.(...)(...))((.(...))(...)))	..((.(...)))((.(...))(.(...)(...))((.(...))(...)))	.[......].........................................	random density2 witness from sample=32 sweep; energy_buckets=2 admissible_splits=32 public_replay_energy=35.74

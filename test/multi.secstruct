@@ -1,0 +1,62 @@
+
+>pkfree_stem | family=pk_free | expected=valid
+GCAUGC
+(....)
+
+
+>pkfree_stem 2 | family=pk_free | expected=valid
+GCAUGU
+(....)
+
+>pkfree_stem 3 | family=pk_free | expected=valid
+ACAAUGU
+(.....)
+
+>pkfree_hairpin | family=pk_free | expected=valid
+CGGCAACAGCCG
+((((....))))
+
+>pkfree_hairpin 2 | family=pk_free | expected=valid
+AGGAAAACAUCCU
+((((.....))))
+
+>density2_pk 1 | family=density2_pk | expected=valid
+GGGCAAAAGGCGAAAAGCCCAAAACGCC
+((((....[[[[....))))....]]]]
+
+>density2_pk 2 | family=density2_pk | expected=valid
+GGGCAAAAGGCGAAAAAGCCCACAAACGCC
+((((....[[[[.....)))).....]]]]
+
+>density2_pk 3 | family=density2_pk | expected=valid
+GCGCAAAAGGCGGGAAAAAGCGCACAAACUCGCC
+((((....[[[[[[.....)))).....]]]]]]
+
+>density2_pk 4 | family=density2_pk | expected=valid
+GGCGGAAAAACCGGCAAAAACCGCCAAAAACGGGUAAUAAGCUGGAAAAAGCCCG
+(((((.....[[[[[.....))))).....(((((.....]]]]].....)))))
+
+>density2_pk 5 | family=density2_pk | expected=valid
+GGCGGAAAUUAACCGGCGCAAAAACCGCCAAAUUAACGGGUAAUAAGCGCUGGAAAAAGCCCG
+(((((.......[[[[[[[.....))))).......(((((.....]]]]]]].....)))))
+
+
+>invalid_length_mismatch | family=invalid | expected=invalid | reason=length_mismatch
+GCAAA
+(....)
+
+>invalid_sequence_symbol | family=invalid | expected=invalid | reason=invalid_sequence_symbol
+GCXAC
+(..).
+
+>invalid_unbalanced_structure | family=invalid | expected=invalid | reason=unbalanced_structure
+GCAAC
+((..)
+
+>invalid_mixed_pk_families | family=invalid | expected=invalid | reason=mixed_pk_families
+AGGGGAAAAAGGAGGAAAUGGGGAAAAAAACCCCUAAAACCUCCAAAGGCGGAAAAACCCCGAAAAACCGCC
+(((((.....{{{{{...[[[[[.......)))))....}}}}}...(((((.....]]]]].....)))))
+
+>abnormal dotbracket | family=density2_pk | expected=valid | reason=unsupported_pk_family
+GGGCAAAAGGCGAAAAGCCCAAAACGCC
+((((....<<<<....))))....>>>>

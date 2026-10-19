@@ -1,0 +1,58 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Otagaki Takumi <takumiotagaki@gmail.com>
+Date: Wed, 7 Oct 2026 16:53:40 +0900
+Subject: [PATCH 6/6] Require the whole VPR right unpaired run [k+1,j] to be
+ free in G (CParty#5 follow-up)
+
+`up[j-1] >= j-k` checks [k, j-1]; a G-paired base at j could be charged as
+an unpaired c' base.
+
+---
+ src/part_func.cc   | 4 ++--
+ src/pseudo_loop.cc | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/part_func.cc b/src/part_func.cc
+index 543a58e..40a9c1c 100644
+--- a/src/part_func.cc
++++ b/src/part_func.cc
+@@ -500,7 +500,7 @@ void W_final_pf::compute_VPR(cand_pos_t i, cand_pos_t j, sparse_tree &tree) {
+     pf_t contributions = 0;
+     cand_pos_t max_i_bp = std::max(tree.B(i, j), tree.bp(i, j));
+     for (cand_pos_t k = max_i_bp + 1; k < j; ++k) {
+-        bool can_pair = tree.up[j - 1] >= (j - k);
++        bool can_pair = tree.up[j] >= (j - k);
+         contributions += (get_energy_VP(i, k) * get_energy_WIP(k + 1, j));
+         if (can_pair) contributions += (get_energy_VP(i, k) * expcp_pen[j - k]);
+     }
+@@ -1629,7 +1629,7 @@ void W_final_pf::Sample_VPR(cand_pos_t i, cand_pos_t j, std::string &structure,
+ 
+     cand_pos_t max_i_bp = std::max(tree.B(i, j), tree.bp(i, j));
+     for (k = max_i_bp + 1; k < j; ++k) {
+-        bool can_pair = tree.up[j - 1] >= (j - k);
++        bool can_pair = tree.up[j] >= (j - k);
+         V_temp = (get_energy_VP(i, k) * get_energy_WIP(k + 1, j));
+         qt += V_temp;
+         if (qt >= r) {
+diff --git a/src/pseudo_loop.cc b/src/pseudo_loop.cc
+index 6c8310b..0cf194a 100644
+--- a/src/pseudo_loop.cc
++++ b/src/pseudo_loop.cc
+@@ -186,7 +186,7 @@ void pseudo_loop::compute_VPR(cand_pos_t i, cand_pos_t j, sparse_tree &tree) {
+ 
+     for (cand_pos_t k = max_i_bp + 1; k < j; ++k) {
+         energy_t VP_energy = get_VP(i, k);
+-        bool can_pair = tree.up[j - 1] >= (j - k);
++        bool can_pair = tree.up[j] >= (j - k);
+ 
+         m1 = std::min(m1, VP_energy + get_WIP(k + 1, j));
+         if (can_pair) m2 = std::min(m2, VP_energy + static_cast<energy_t>((j - k) * cp_penalty));
+@@ -1105,7 +1105,7 @@ void pseudo_loop::back_track(std::string structure, minimum_fold *f, seq_interva
+ 
+         for (cand_pos_t k = max_i_bp + 1; k < j; ++k) {
+             energy_t VP_energy = get_VP(i, k);
+-            bool can_pair = tree.up[j - 1] >= (j - k);
++            bool can_pair = tree.up[j] >= (j - k);
+             if (can_pair) tmp = VP_energy + static_cast<energy_t>((j - k) * cp_penalty);
+             if (tmp < min) {
+                 best_k = k;

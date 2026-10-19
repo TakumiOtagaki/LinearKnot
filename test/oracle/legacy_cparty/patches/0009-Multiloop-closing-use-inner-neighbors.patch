@@ -1,0 +1,19 @@
+Subject: [PATCH] Use inner neighbors for multiloop PF closing stems
+
+The two neighbors of a closing pair are inside the interval. Exterior
+endpoint guards incorrectly remove them when i == 1 or j == n. Keep
+pair orientation, dangles selection and branch/exterior helpers unchanged.
+
+--- a/src/part_func.cc
++++ b/src/part_func.cc
+@@ -298,8 +298,8 @@
+ pf_t W_final_pf::exp_Mbloop(cand_pos_t i, cand_pos_t j) {
+     pair_type tt = pair[S_[j]][S_[i]];
+     if (exp_params_->model_details.dangles == 1 || exp_params_->model_details.dangles == 2) {
+-        base_type si1 = i > 1 ? S_[i + 1] : -1;
+-        base_type sj1 = j < n ? S_[j - 1] : -1;
++        base_type si1 = S_[i + 1];
++        base_type sj1 = S_[j - 1];
+         return exp_E_MLstem(tt, sj1, si1, exp_params_);
+     } else {
+         return exp_E_MLstem(tt, -1, -1, exp_params_);

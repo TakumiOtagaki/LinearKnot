@@ -1,0 +1,3 @@
+case_id	length	max_splits	seq	structure_union	note
+rand70_0025	70	40	AACGUAUGAGUCUUUAGACCAAGCGUUUACGGAGUUAUGCCCAUUAAUCAUGUAGAGGGAAACUCGGCAU	..(...(.(..[[.)))((...).((.(..]])))(....(.(.(....)))(....)(...(...))))	clean admissible fixture: all checked splits evaluate and collapse to one energy bucket
+rand50_0027	50	128	UUCGGCGGUAAGUCUUCCAUAGGAUCAGACUGGAGCGCGUGCAAUGUGCG	.(([..))(...(.(..(...)))(((...))(....))(..(.].)).)	clean admissible fixture: wide pkfree search still collapses to one energy bucket

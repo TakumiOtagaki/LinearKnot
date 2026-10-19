@@ -1,0 +1,3 @@
+>bpRNA_RFAM_27342
+UUCCCAUUCAGUAGUCCCGGACGAAUUAGAAUUUAGCGUACGGUUUGGACAUAAUGGGGAAAUGGACUUUACUCUUUUUGCAGCGAAGUUGAUCCUUAUGAUCUCUUUGCUAGCCAUAAGUUUAAUACAAUG
+((((((((............................................))))))))...................(((((((((..((((.....)))).))))))).))..................

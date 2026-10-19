@@ -1,0 +1,228 @@
+{
+  "repository_version": "0.1.1",
+  "input_sha256": "7b2ba5695e19906ae3eac7e27aa2aa0d749bce03309a318ecbe87ff702335b7b",
+  "parameters": "bundled Turner2004 (external parameter-file override removed)",
+  "scope": "beam=100, outer ranking, pilot exponent=2/3, local caps=30",
+  "binary_sha256": {
+    "linearknot": "14b7d576e0e1d873607ea36dc3573e71ef7b8542fb34990cb7e26fd94ef84ead"
+  },
+  "commands": [
+    {
+      "argv": [
+        "linearknot",
+        "fold",
+        "-i",
+        "examples/hairpin_exterior/input.txt",
+        "--beam",
+        "100",
+        "--ranking",
+        "outer",
+        "--outer-pilot-exponent",
+        "2/3",
+        "--max-hairpin",
+        "30",
+        "--max-case3-depth",
+        "30",
+        "--bpp",
+        "bpp.tsv"
+      ],
+      "stdout": "prediction.txt"
+    },
+    {
+      "argv": [
+        "linearknot",
+        "profile",
+        "-i",
+        "examples/hairpin_exterior/input.txt",
+        "--beam",
+        "100",
+        "--ranking",
+        "outer",
+        "--outer-pilot-exponent",
+        "2/3",
+        "--max-hairpin",
+        "30",
+        "--max-case3-depth",
+        "30"
+      ],
+      "stdout": "loop_profile.txt"
+    },
+    {
+      "argv": [
+        "linearknot",
+        "access",
+        "-i",
+        "examples/hairpin_exterior/input.txt",
+        "--beam",
+        "100",
+        "--ranking",
+        "outer",
+        "--outer-pilot-exponent",
+        "2/3",
+        "--max-hairpin",
+        "30",
+        "--max-case3-depth",
+        "30",
+        "--access-len",
+        "1,3,5",
+        "--probability"
+      ],
+      "stdout": "raccess_probability.txt"
+    },
+    {
+      "argv": [
+        "linearknot",
+        "access",
+        "-i",
+        "examples/hairpin_exterior/input.txt",
+        "--beam",
+        "100",
+        "--ranking",
+        "outer",
+        "--outer-pilot-exponent",
+        "2/3",
+        "--max-hairpin",
+        "30",
+        "--max-case3-depth",
+        "30",
+        "--access-len",
+        "1,3,5"
+      ],
+      "stdout": "raccess_energy.txt"
+    },
+    {
+      "argv": [
+        "linearknot",
+        "access",
+        "-i",
+        "examples/hairpin_exterior/input.txt",
+        "--beam",
+        "100",
+        "--ranking",
+        "outer",
+        "--outer-pilot-exponent",
+        "2/3",
+        "--max-hairpin",
+        "30",
+        "--max-case3-depth",
+        "30",
+        "--access-len",
+        "1,3,5",
+        "--probability",
+        "--by-loop"
+      ],
+      "stdout": "raccess_byloop.txt"
+    },
+    {
+      "argv": [
+        "linearknot",
+        "sample",
+        "-i",
+        "examples/hairpin_exterior/input.txt",
+        "--beam",
+        "100",
+        "--ranking",
+        "outer",
+        "--outer-pilot-exponent",
+        "2/3",
+        "--max-hairpin",
+        "30",
+        "--max-case3-depth",
+        "30",
+        "--count",
+        "20",
+        "--seed",
+        "42"
+      ],
+      "stdout": "samples.txt"
+    },
+    {
+      "argv": [
+        "linearknot",
+        "sample",
+        "-i",
+        "examples/hairpin_exterior/input.txt",
+        "--beam",
+        "100",
+        "--ranking",
+        "outer",
+        "--outer-pilot-exponent",
+        "2/3",
+        "--max-hairpin",
+        "30",
+        "--max-case3-depth",
+        "30",
+        "--count",
+        "1000",
+        "--seed",
+        "42",
+        "--unique"
+      ],
+      "stdout": "sample_counts.txt"
+    },
+    {
+      "argv": [
+        "linearknot",
+        "subopt",
+        "-i",
+        "examples/hairpin_exterior/input.txt",
+        "--beam",
+        "100",
+        "--ranking",
+        "outer",
+        "--outer-pilot-exponent",
+        "2/3",
+        "--max-hairpin",
+        "30",
+        "--max-case3-depth",
+        "30",
+        "--top-k",
+        "8",
+        "--stats"
+      ],
+      "stdout": "subopt.txt"
+    },
+    {
+      "argv": [
+        "linearknot",
+        "mea",
+        "-i",
+        "examples/hairpin_exterior/input.txt",
+        "--beam",
+        "100",
+        "--ranking",
+        "outer",
+        "--outer-pilot-exponent",
+        "2/3",
+        "--max-hairpin",
+        "30",
+        "--max-case3-depth",
+        "30",
+        "--gamma",
+        "1"
+      ],
+      "stdout": "mea.txt"
+    },
+    {
+      "argv": [
+        "linearknot",
+        "centroid",
+        "-i",
+        "examples/hairpin_exterior/input.txt",
+        "--beam",
+        "100",
+        "--ranking",
+        "outer",
+        "--outer-pilot-exponent",
+        "2/3",
+        "--max-hairpin",
+        "30",
+        "--max-case3-depth",
+        "30",
+        "--gamma",
+        "1"
+      ],
+      "stdout": "centroid.txt"
+    }
+  ]
+}

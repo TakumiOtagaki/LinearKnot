@@ -1,0 +1,113 @@
+case_id	seq	G	cli_mfe_structure	cli_mfe_energy
+pkfree_stem	GCAUGC	(....)	......	0
+pkfree_stem 2	GCAUGU	(....)	......	0
+pkfree_stem 3	ACAAUGU	(.....)	.......	0
+pkfree_hairpin	CGGCAACAGCCG	((((....))))	((((....))))	-3.45
+pkfree_hairpin 2	AGGAAAACAUCCU	((((.....))))	((((.....))))	-1.09
+h_type 1	GGGCAAAAGGCGAAAAGCCCAAAACGCC	((((....[[[[....))))....]]]]	((((....[[[[....))))....]]]]	-6.69
+h_type 2	GGGCAAAAGGCGAAAAAGCCCACAAACGCC	((((....[[[[.....)))).....]]]]	((((....[[[[.....)))).....]]]]	-6.57
+h_type 2	GCGCAAAAGGCGGGAAAAAGCGCACAAACUCGCC	((((....[[[[[[.....)))).....]]]]]]	((((....[[[[[[.....)))).....]]]]]]	-8.36
+k_type 1	GGCGGAAAAACCGGCAAAAACCGCCAAAAACGGGUAAUAAGCUGGAAAAAGCCCG	(((((.....[[[[[.....))))).....(((((.....]]]]].....)))))	(((((.....[[[[[.....))))).....(((((.....]]]]].....)))))	-12.05
+k_type 2	GGCGGAAAUUAACCGGCGCAAAAACCGCCAAAUUAACGGGUAAUAAGCGCUGGAAAAAGCCCG	(((((.......[[[[[[[.....))))).......(((((.....]]]]]]].....)))))	(((((.......[[[[[[[.....))))).......(((((.....]]]]]]].....)))))	-15.08
+invalid_mixed_pk_families	AGGGGAAAAAGGAGGAAAUGGGGAAAAAAACCCCUAAAACCUCCAAAGGCGGAAAAACCCCGAAAAACCGCC	(((((.....{{{{{...[[[[[.......)))))....}}}}}...(((((.....]]]]].....)))))	(((((.....[[[[[...............)))))....]]]]]...(((((...............)))))	-13.55
+abnormal dotbracket	GGGCAAAAGGCGAAAAGCCCAAAACGCC	((((....<<<<....))))....>>>>	((((....[[[[....))))....]]]]	-6.69
+rand_0001_pkfree_stem 3	GAGCUAC	(.....)	.......	0
+rand_0002_pkfree_hairpin	GUAAGUAAUUGC	((((....))))	((((....))))	-0.39
+rand_0003_pkfree_hairpin 2	GAUUCAAAGAAUC	((((.....))))	(((((...)))))	-0.54
+rand_0004_pkfree_stem 3	AUCGCUU	(.....)	.......	0
+rand_0005_pkfree_stem 2	UGCUUG	(....)	......	0
+rand_0006_pkfree_stem	UUCUGA	(....)	......	0
+rand_0007_pkfree_hairpin 2	CAGGUUUAACUUG	((((.....))))	(((((...)))))	-0.42
+rand_0008_pkfree_stem	UAGUGA	(....)	......	0
+rand_0009_pkfree_stem	UUGCUA	(....)	......	0
+rand_0010_pkfree_stem	GUGUAC	(....)	......	0
+rand_0011_pkfree_hairpin 2	CAUACUAGAUAUG	((((.....))))	.............	0
+rand_0012_pkfree_hairpin	UGAUCGAUAUCA	((((....))))	............	0
+rand_0013_pkfree_stem 2	CUGUGG	(....)	......	0
+rand_0014_pkfree_stem 3	ACCCUCU	(.....)	.......	0
+rand_0015_pkfree_hairpin 2	UCGGUUUGGUCGG	((((.....))))	.............	0
+rand_0016_pkfree_hairpin 2	UAAAACGGCUUUG	((((.....))))	.............	0
+rand_0017_pkfree_hairpin	UAUUCCACAAUA	((((....))))	............	0
+rand_0018_pkfree_hairpin	GGCGGCACUGUC	((((....))))	((((....))))	-0.15
+rand_0019_pkfree_hairpin	GGUUUAAAAGUU	((((....))))	............	0
+rand_0020_pkfree_hairpin	CUGUAGUUGCAG	((((....))))	((((....))))	-0.73
+rand_0021_pkfree_stem 2	UUUAGG	(....)	......	0
+rand_0022_pkfree_stem 3	UUAAGAG	(.....)	.......	0
+rand_0023_pkfree_stem 2	GACUGU	(....)	......	0
+rand_0024_pkfree_stem	GGACGU	(....)	......	0
+rand_0025_pkfree_stem 2	CCCCCG	(....)	......	0
+rand_0026_pkfree_hairpin 2	UUCCGUUAGGGGA	((((.....))))	((((.....))))	-0.13
+rand_0027_pkfree_hairpin	GUCGUUAUUGGC	((((....))))	............	0
+rand_0028_pkfree_stem 3	AAAAUGU	(.....)	.......	0
+rand_0029_pkfree_stem	AGACGU	(....)	......	0
+rand_0030_pkfree_stem	ACUGGU	(....)	......	0
+rand_0031_pkfree_hairpin	AAUGGUAGUAUU	((((....))))	............	0
+rand_0032_pkfree_hairpin	CAGCUGUAGUUG	((((....))))	((((....))))	-0.67
+rand_0033_pkfree_hairpin	GAUGAACGCAUU	((((....))))	((((....))))	-0.55
+rand_0034_pkfree_hairpin	GUUGUAUCUGAC	((((....))))	............	0
+rand_0035_pkfree_stem	GUAUCC	(....)	......	0
+rand_0036_pkfree_hairpin 2	UUGUACUUAGCGA	((((.....))))	.............	0
+rand_0037_pkfree_stem	GUCUUC	(....)	......	0
+rand_0038_pkfree_stem 3	UUCUCGA	(.....)	.......	0
+rand_0039_pkfree_stem	UAGAUA	(....)	......	0
+rand_0040_pkfree_stem	UACGCG	(....)	......	0
+rand_0041_pkfree_stem 3	GUCUUAC	(.....)	.......	0
+rand_0042_pkfree_stem	GCGCCC	(....)	......	0
+rand_0043_pkfree_stem 2	GGUAGC	(....)	......	0
+rand_0044_pkfree_stem	CUGGGG	(....)	......	0
+rand_0045_pkfree_hairpin	GGGGUGACUUCC	((((....))))	((((....))))	-0.62
+rand_0046_pkfree_hairpin	CUUUUUAUGGAG	((((....))))	((((....))))	-0.46
+rand_0047_pkfree_hairpin 2	UUGGAAAGUCUAG	((((.....))))	.............	0
+rand_0048_pkfree_stem	UCCUGA	(....)	......	0
+rand_0049_pkfree_stem 3	GCGAAUU	(.....)	.......	0
+rand_0050_pkfree_stem	CCGCGG	(....)	......	0
+rand_0051_pkfree_stem	UACCCG	(....)	......	0
+rand_0052_pkfree_stem 3	GUCGCCC	(.....)	.......	0
+rand_0053_pkfree_stem 3	ACAGCAU	(.....)	.......	0
+rand_0054_pkfree_hairpin	UGAGAGCAUUUG	((((....))))	............	0
+rand_0055_pkfree_stem 3	UUAGUUA	(.....)	.......	0
+rand_0056_pkfree_stem 3	GACAAAU	(.....)	.......	0
+rand_0057_pkfree_hairpin 2	UGUAUUCGUUAUA	((((.....))))	.............	0
+rand_0058_pkfree_stem	UCAAGA	(....)	......	0
+rand_0059_pkfree_stem 3	GCAUGUU	(.....)	.......	0
+rand_0060_pkfree_stem 3	UCAUAUG	(.....)	.......	0
+rand_0061_pkfree_hairpin	AGUUCCUCAGCU	((((....))))	............	0
+rand_0062_pkfree_hairpin	GACUAUGUAGUU	((((....))))	............	0
+rand_0063_pkfree_stem	UUGUAA	(....)	......	0
+rand_0064_pkfree_hairpin 2	UAUGCCUACCAUG	((((.....))))	.............	0
+rand_0065_pkfree_stem	AAGACU	(....)	......	0
+rand_0066_pkfree_stem	AACAUU	(....)	......	0
+rand_0067_pkfree_stem	UGGGAG	(....)	......	0
+rand_0068_pkfree_stem 2	GUGUUC	(....)	......	0
+rand_0069_pkfree_hairpin 2	GUUACAGUGUAAC	((((.....))))	(((((...)))))	-0.43
+rand_0070_pkfree_hairpin 2	ACUCCUAAGGGGU	((((.....))))	(((((...)))))	-1.94
+rand_0071_pkfree_hairpin	GGCCAUCUGGUC	((((....))))	((((....))))	-1.96
+rand_0072_pkfree_stem 2	GCGGCC	(....)	......	0
+rand_0073_pkfree_stem 2	UGGAGG	(....)	......	0
+rand_0074_pkfree_hairpin	GGGUUCUCAUCC	((((....))))	((((....))))	-1.46
+rand_0075_pkfree_stem	UUAGUG	(....)	......	0
+rand_0076_pkfree_stem 3	CUGCGUG	(.....)	.......	0
+rand_0077_pkfree_hairpin 2	CGUCGAUCUGGCG	((((.....))))	((((.....))))	-0.8
+rand_0078_pkfree_stem	CUAUGG	(....)	......	0
+rand_0079_pkfree_stem 3	ACCAGCU	(.....)	.......	0
+rand_0080_pkfree_hairpin	GUCGUGAGCGGC	((((....))))	((((....))))	-1.6
+rand_0081_pkfree_hairpin	GGAGGAGACUCC	((((....))))	((((....))))	-3.56
+rand_0082_pkfree_stem 3	AGUCCCU	(.....)	.......	0
+rand_0083_pkfree_stem 2	CCCACG	(....)	......	0
+rand_0084_pkfree_hairpin 2	CCUGUCGUGUGGG	((((.....))))	((((.....))))	-0.55
+rand_0085_pkfree_stem 2	GAAUAU	(....)	......	0
+rand_0086_pkfree_stem 3	GUAGUGC	(.....)	.......	0
+rand_0087_pkfree_stem 3	AUGCGUU	(.....)	.......	0
+rand_0088_pkfree_stem 3	CUUAAAG	(.....)	.......	0
+rand_0089_pkfree_stem 2	CCCGUG	(....)	......	0
+rand_0090_pkfree_hairpin	AACAGUUCUGUU	((((....))))	............	0
+rand_0091_pkfree_hairpin	GGCGGUUUCGUC	((((....))))	((((....))))	-0.93
+rand_0092_pkfree_stem 3	UCCUCGA	(.....)	.......	0
+rand_0093_pkfree_stem 2	CUGGGG	(....)	......	0
+rand_0094_pkfree_stem 3	AAAAGAU	(.....)	.......	0
+rand_0095_pkfree_stem 2	GUUUGC	(....)	......	0
+rand_0096_pkfree_stem	GUCUUU	(....)	......	0
+rand_0097_pkfree_hairpin 2	UCAUGUUGUAUGA	((((.....))))	.............	0
+rand_0098_pkfree_hairpin 2	AAGGGGUGUCUUU	((((.....))))	.............	0
+rand_0099_pkfree_hairpin 2	GCUCAUCUGGGGC	((((.....))))	((((.....))))	-1.58
+rand_0100_pkfree_stem	UUGGUG	(....)	......	0

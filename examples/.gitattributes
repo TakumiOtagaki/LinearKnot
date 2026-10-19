@@ -1,0 +1,2 @@
+# Preserve the CLI's blank record separator at the end of raw output files.
+hairpin_exterior/output/* whitespace=-blank-at-eof

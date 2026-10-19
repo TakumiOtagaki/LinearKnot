@@ -1,0 +1,31 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Otagaki Takumi <takumiotagaki@gmail.com>
+Date: Wed, 7 Oct 2026 16:25:54 +0900
+Subject: [PATCH 2/5] cli: read input_structure_given before
+ cmdline_parser_free clears it
+
+---
+ src/CParty.cc | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/CParty.cc b/src/CParty.cc
+index 6682700..8223400 100644
+--- a/src/CParty.cc
++++ b/src/CParty.cc
+@@ -129,6 +129,7 @@ int main(int argc, char *argv[]) {
+ 
+     std::string restricted;
+     args_info.input_structure_given ? restricted = args_info.input_structure_arg : restricted = "";
++    const bool input_structure_given = args_info.input_structure_given;
+     std::string fileI;
+     args_info.input_file_given ? fileI = args_info.input_file_arg : fileI = "";
+ 
+@@ -221,7 +222,7 @@ int main(int argc, char *argv[]) {
+         std::string final_structure = hfold(seq, structure, energy, tree,ShapeData, pk_free, pk_only, dangles);
+         std::string final_structure_pf = hfold_pf(seq, final_structure, energy_pf,MEA_structure,MEA,centroid_structure,fatgraphs[i],distance,frequency, diversity,num_fatgraph, tree,ShapeData, pk_free,pk_only, dangles, energy, num_samples, print_samples, PSplot, gamma);
+ 
+-        if (!args_info.input_structure_given && energy > 0.0) {
++        if (!input_structure_given && energy > 0.0) {
+             energy = 0.0;
+             energy_pf = 0.0;
+             final_structure = std::string(n, '.');

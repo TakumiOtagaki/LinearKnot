@@ -1,0 +1,7 @@
+case_id	length	seq	G
+beamfix20_0001	20	GGUUCGCGAUCGGAUCUAGG	...(((....)).)(....)
+beamfix20_0002	20	UACUGUCAGGGCGCGGUUCG	...(.....(.(...).).)
+beamfix40_0001	40	UUUAGGGGUGGUUAAAGAUUGUGCCUUCGACACUGCUUUU	((...).(....))(....)(((....))(...)(...))
+beamfix40_0002	40	CUUAUUCCUAGUUAGAGUUGAAAUACUUUGUACAUCCCGG	.(..(.(...)(((....)))))((...))(...(...))
+beamfix80_0001	80	UCUUCGAGUUGCGGAGAGCGAUGGGAACCAGAAGAUACGUCUAGCAUGUCGUAAGGAUGGUUCACUUUGCCUUCGACGCG	(....)(.((..(.....))))(....)(.(...(....))(....(.(...))))(....)((...)(..(.....)))
+beamfix80_0002	80	UACAAACAAGUUGGGGAUUCAGAUCAUCUGGGUCAUUCAUGUGUUCCGCAACCAAGUUCCGUCGGUGGUGCCUAGGCACU	(...)(...((...)..))(...((....))(...(....))(...)(.(..(..(...)))))(...(((....))).)

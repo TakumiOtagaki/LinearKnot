@@ -1,0 +1,22 @@
+# Local build and packaging outputs
+/build/
+/dist/
+/wheelhouse/
+/.venv/
+__pycache__/
+*.pyc
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Local instructions, research and external tools
+/AGENTS.md
+/paper/
+/results/
+/logs/
+/third_party/
+/tmp/
+.DS_Store

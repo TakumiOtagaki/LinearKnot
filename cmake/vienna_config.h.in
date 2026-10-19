@@ -1,0 +1,8 @@
+#ifndef LINEARKNOT_VIENNA_CONFIG_H
+#define LINEARKNOT_VIENNA_CONFIG_H
+
+// Platform capabilities used by the bundled ViennaRNA sources.
+#cmakedefine HAVE_ERAND48 1
+#cmakedefine HAVE_STRDUP 1
+
+#endif

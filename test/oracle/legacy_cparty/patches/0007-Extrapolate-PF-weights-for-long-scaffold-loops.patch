@@ -1,0 +1,55 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Otagaki Takumi <takumiotagaki@gmail.com>
+Date: Sat, 10 Oct 2026 01:00:00 +0900
+Subject: [PATCH 7/7] Extrapolate PF weights for long scaffold loops
+
+BE follows fixed scaffold pairs and can admit more than MAXLOOP unpaired
+bases. The bundled exp_E_IntLoop indexes expinternal/expbulge/expninio
+without a runtime long-loop extension. Preserve BE support and evaluate
+its long-loop weight using Vienna's logarithmic initiation and capped NINIO
+formulas. Respect pf_smooth rounding of the full initiation energy and
+NINIO slope. Existing loops <= MAXLOOP are unchanged. Legacy MFE already
+uses E_IntLoop, which has the long-loop formula; this fixes its PF helper.
+
+This is local patch 0007, not an upstream issue number. The author reported
+this upstream on 2026-10-10; the issue number has not been recorded here.
+
+---
+diff --git a/src/part_func.cc b/src/part_func.cc
+--- a/src/part_func.cc
++++ b/src/part_func.cc
+@@ -598,4 +598,34 @@
+ pf_t W_final_pf::compute_int(cand_pos_t i, cand_pos_t j, cand_pos_t k, cand_pos_t l) {
+     const pair_type ptype_closing = pair[S_[i]][S_[j]];
++    const cand_pos_t u1 = k - i - 1, u2 = j - l - 1;
++    if (u1 + u2 > MAXLOOP) {
++        const auto type2 = rtype[pair[S_[k]][S_[l]]];
++        if (exp_params_->model_details.noGUclosure &&
++            (ptype_closing == 3 || ptype_closing == 4 || type2 == 3 || type2 == 4)) return 0;
++        const double TT = (exp_params_->temperature + K0) / Tmeasure;
++        const bool bulge = u1 == 0 || u2 == 0;
++        const double g37 = bulge ? bulge37[30] : internal_loop37[30];
++        const double dh = bulge ? bulgedH[30] : internal_loopdH[30];
++        double energy = dh - (dh - g37) * TT +
++                        exp_params_->lxc * log(static_cast<double>(u1 + u2) / 30.);
++        if (!exp_params_->model_details.pf_smooth) energy = static_cast<int>(energy);
++        pf_t weight = exp(-energy * 10. / exp_params_->kT);
++        if (bulge) {
++            if (ptype_closing > 2) weight *= exp_params_->expTermAU;
++            if (type2 > 2) weight *= exp_params_->expTermAU;
++        } else {
++            double slope = niniodH - (niniodH - ninio37) * TT;
++            if (!exp_params_->model_details.pf_smooth) slope = static_cast<int>(slope);
++            weight *= exp(-std::min(static_cast<double>(MAX_NINIO),
++                                   std::abs(u1 - u2) * slope) * 10. / exp_params_->kT);
++            if (std::min(u1, u2) == 1)
++                weight *= exp_params_->expmismatch1nI[ptype_closing][S1_[i + 1]][S1_[j - 1]] *
++                          exp_params_->expmismatch1nI[type2][S1_[l + 1]][S1_[k - 1]];
++            else
++                weight *= exp_params_->expmismatchI[ptype_closing][S1_[i + 1]][S1_[j - 1]] *
++                          exp_params_->expmismatchI[type2][S1_[l + 1]][S1_[k - 1]];
++        }
++        return weight;
++    }
+     return exp_E_IntLoop(k - i - 1, j - l - 1, ptype_closing, rtype[pair[S_[k]][S_[l]]], S1_[i + 1], S1_[j - 1], S1_[k - 1], S1_[l + 1], exp_params_);
+ }

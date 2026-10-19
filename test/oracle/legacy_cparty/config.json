@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "upstream_url": "https://github.com/TheCOBRALab/CParty.git",
+  "upstream_commit": "800e95af9d1a97555233e2c7b37d73dbaa1a92b4",
+  "wmb_closure_policy": "legacy-compatible-wmb",
+  "patches": [
+    "0001-build-include-algorithm-in-centroid.cc-for-std-sort.patch",
+    "0002-cli-read-input_structure_given-before-cmdline_parser.patch",
+    "0006-VPR-right-run-guard-covers-j-CParty-5-follow-up.patch",
+    "0007-Extrapolate-PF-weights-for-long-scaffold-loops.patch",
+    "0008-WIP-include-minimal-hairpin-branch.patch",
+    "0009-Multiloop-closing-use-inner-neighbors.patch"
+  ]
+}

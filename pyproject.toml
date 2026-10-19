@@ -1,0 +1,58 @@
+[build-system]
+requires = ["scikit-build-core>=1.0,<2"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "linearknot"
+dynamic = ["version"]
+description = "Fixed-scaffold RNA pseudoknot ensembles, prediction, and accessibility"
+readme = "python/README.md"
+requires-python = ">=3.9"
+license = "GPL-3.0-only"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "src/ViennaRNA/COPYING", "src/ViennaRNA/AUTHORS"]
+classifiers = [
+  "Environment :: Console",
+  "Intended Audience :: Science/Research",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+[project.urls]
+Repository = "https://github.com/TakumiOtagaki/LinearKnot"
+Issues = "https://github.com/TakumiOtagaki/LinearKnot/issues"
+
+[[tool.dynamic-metadata]]
+provider = "scikit_build_core.metadata.regex"
+field = "version"
+input = "VERSION"
+regex = '^(?P<value>[0-9]+\.[0-9]+\.[0-9]+)\s*$'
+
+[tool.scikit-build]
+minimum-version = "1.0"
+cmake.version = ">=3.15"
+cmake.build-type = "Release"
+cmake.define.BUILD_TESTING = "OFF"
+cmake.define.LINEARKNOT_ENABLE_LTO = "OFF"
+build.tool-args = ["-j8"]
+build.targets = ["linearknot"]
+install.components = ["cli"]
+wheel.packages = []
+wheel.py-api = "py3"
+# Explicit inclusion keeps research documents and local work out of releases.
+sdist.inclusion-mode = "explicit"
+sdist.include = [
+  "CMakeLists.txt", "VERSION", "LICENSE", "THIRD_PARTY_NOTICES.md", "pyproject.toml",
+  "cmake/LinearKnotConfig.cmake", "cmake/BundledViennaRNA.cmake",
+  "cmake/vienna_config.h.in", "src/**", "python/**",
+]
+sdist.exclude = ["**/__pycache__/**", "**/*.pyc", "**/*.o", "**/*.a"]
+
+[tool.cibuildwheel]
+# The commands do not use the Python ABI: one py3-none wheel per platform.
+build = "cp39-manylinux_* cp39-macosx_*"
+test-command = "python {project}/python/smoke_test.py"
+
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"

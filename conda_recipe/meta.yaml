@@ -1,0 +1,59 @@
+{% set version = load_file_regex(load_file='../VERSION', regex_pattern='^([0-9]+[.][0-9]+[.][0-9]+)', from_recipe_dir=True)[1] %}
+
+package:
+  name: linearknot
+  version: "{{ version }}"
+
+source:
+  path: ..
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - make
+    - cmake >=3.15
+
+test:
+  commands:
+    - linearknot --help
+    - linearknot --version
+    - linearknot fold --help
+    - linearknot profile --help
+    - linearknot access --help
+    - linearknot sample --help
+    - linearknot subopt --help
+    - linearknot mea --help
+    - linearknot centroid --help
+    - linearknot fold --sequence GGGGGAACCAACCC --scaffold '((.....)).....'
+    - linearknot fold --sequence GGGGGAACCAACCC --scaffold '((.....)).....' --exact
+    - linearknot profile --sequence GGGGGAACCAACCC --scaffold '((.....)).....'
+    - linearknot access --sequence GGGGGAACCAACCC --scaffold '((.....)).....' --access-len 1,3
+    - linearknot sample --sequence GGGGGAACCAACCC --scaffold '((.....)).....' --count 2
+    - linearknot subopt --sequence GGGGGAACCAACCC --scaffold '((.....)).....' --top-k 2
+    - linearknot mea --sequence GGGGGAACCAACCC --scaffold '((.....)).....'
+    - linearknot centroid --sequence GGGGGAACCAACCC --scaffold '((.....)).....'
+
+about:
+  home: https://github.com/TakumiOtagaki/LinearKnot
+  dev_url: https://github.com/TakumiOtagaki/LinearKnot
+  license: GPL-3.0-only
+  license_file:
+    - LICENSE
+    - THIRD_PARTY_NOTICES.md
+    - src/ViennaRNA/COPYING
+    - src/ViennaRNA/AUTHORS
+  summary: "Beam-pruned and exact fixed-scaffold RNA pseudoknot ensembles"
+  description: |
+    LinearKnot implements a shared C++17 SCFG2 kernel for density-2 RNA
+    pseudoknots conditioned on a noncrossing scaffold. The toolset provides
+    MFE prediction, partition functions, base-pair probabilities, structural
+    profiles, accessibility, sampling, ranked suboptimal structures, and
+    MEA/gamma-centroid decoding, with beam-pruned and exact modes.
+
+extra:
+  recipe-maintainers:
+    - TakumiOtagaki

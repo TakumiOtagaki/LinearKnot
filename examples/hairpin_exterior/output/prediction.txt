@@ -1,0 +1,5 @@
+>hairpin_exterior
+GGGGGAACCAACCC
+((.....)).....
+(([[[..))..]]] (-5.03)
+ensemble free energy: -5.0525 kcal/mol

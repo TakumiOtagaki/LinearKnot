@@ -1,0 +1,39 @@
+Subject: [PATCH] Include the minimal hairpin branch in WIP splits
+
+V(k,j) is valid when j-k-1 == TURN. Include that endpoint in
+partition-function and MFE forward/traceback WIP scans. Sampling
+already uses k < j-TURN; no sampling changes are included.
+
+--- a/src/part_func.cc
++++ b/src/part_func.cc
+@@ -471,3 +471,3 @@
+     contributions += get_energy_WMB(i, j) * expbp_penalty * expPSM_penalty;
+-    for (cand_pos_t k = i + 1; k < j - TURN - 1; ++k) {
++    for (cand_pos_t k = i + 1; k <= j - TURN - 1; ++k) {
+         bool can_pair = tree.up[k - 1] >= (k - i);
+--- a/src/pseudo_loop.cc
++++ b/src/pseudo_loop.cc
+@@ -143,3 +143,3 @@
+     // branch 1:
+-    for (cand_pos_t k = i + 1; k < j - TURN - 1; ++k) {
++    for (cand_pos_t k = i + 1; k <= j - TURN - 1; ++k) {
+         bool can_pair = tree.up[k - 1] >= (k - i);
+@@ -1376,2 +1376,2 @@
+-        for (cand_pos_t k = i + 1; k < j - TURN - 1; ++k) {
++        for (cand_pos_t k = i + 1; k <= j - TURN - 1; ++k) {
+             energy_t wi_1 = get_WIP(i, k - 1);
+@@ -1384,3 +1384,3 @@
+         }
+-        for (cand_pos_t k = i + 1; k < j - TURN - 1; ++k) {
++        for (cand_pos_t k = i + 1; k <= j - TURN - 1; ++k) {
+             energy_t wi_1 = get_WIP(i, k - 1);
+@@ -1393,3 +1393,3 @@
+         }
+-        for (cand_pos_t k = i + 1; k < j - TURN - 1; ++k) {
++        for (cand_pos_t k = i + 1; k <= j - TURN - 1; ++k) {
+             bool can_pair = tree.up[k - 1] >= (k - i);
+@@ -1402,3 +1402,3 @@
+         }
+-        for (cand_pos_t k = i + 1; k < j - TURN - 1; ++k) {
++        for (cand_pos_t k = i + 1; k <= j - TURN - 1; ++k) {
+             bool can_pair = tree.up[k - 1] >= (k - i);

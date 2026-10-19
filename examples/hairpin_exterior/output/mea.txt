@@ -1,0 +1,5 @@
+>hairpin_exterior
+GGGGGAACCAACCC
+((.....)).....
+(([[[..))..]]] (EA=13.852294317401967; gamma=1)
+
