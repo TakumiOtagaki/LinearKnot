@@ -26,5 +26,5 @@ oracle patches, disables sampling, and fixes MFE seed 0 / pf_scale=1.
 It marks target V visits with x and evaluates Z(x)/Z(1) at 0,0.5,1,2,4.
 Its trace observes the zero BE read and the later positive BE write.
 
-Full diagnosis and measurements:
-[pair occurrence audit](../../../documents/validation.md).
+See the [BE/VP admission contract](../../../src/scfg2/deductions/README.md#vpwmb-geometry-contract)
+and the [maintained availability regression](../../scfg2_wmbp_be_availability_test.cc).

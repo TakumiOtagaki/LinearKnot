@@ -79,7 +79,7 @@ class PairabilityContext {
 
   // [split+1, right] is free in G.  Legacy CParty checked only
   // [split, right-1] (`up[j-1] >= j-k`), which let the VPR right run end on a
-  // G-paired base; see documents/eval_structure/scfg2_vpr_right_unpaired_20261007.md.
+  // G-paired base; the full-run guard is also in oracle patch 0006.
   virtual bool can_pair_right_span(cand_pos_t split, cand_pos_t right) const {
     if (right < split) return false;
     if (right == split) return true;

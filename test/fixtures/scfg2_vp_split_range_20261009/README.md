@@ -4,8 +4,12 @@
 the latter maximal pair, yet the full legacy WIP*VPR range has a positive
 k=10 term: WIP(3,9)*VPR(10,24). The retired shortcut chose k=11 instead.
 
-Patched legacy inside ensemble energy: 7.652115935675325 kcal/mol.
-Before correction: 7.652115940547774. Its reflection also loses a positive
-right-oriented contribution before correction. See
-`documents/eval_structure/scfg2_vp_split_range_correction_20261009.md` and
-`results/vp_split_range_20261009/` for source provenance and comparisons.
+At the time of the split-range correction, patched legacy inside gave
+7.652115935675325 kcal/mol, compared with 7.652115940547774 before the fix.
+Its reflection also lost a positive right-oriented contribution. These
+historical values precede the separate multiloop-neighbor correction.
+Current patched-legacy energy goldens are in the
+[inside-oracle test](../../scfg2_exact_inside_oracle_test.cc).
+See the [VP deduction rules](../../../src/scfg2/deductions/generate_exact_basic.hh) for the
+full split ranges and the [validation guide](../../../documents/validation.md)
+for the maintained checks.

@@ -85,5 +85,29 @@ variable pair reward is `(gamma+1) p(i,j) - 1`. Both decoders preserve G
 and optimize over grammar-admitted structures. Their posterior objectives
 are distinct and are not thermodynamic energies.
 
+## Fixed-target energy and probability
+
+`ExactSession::evaluate_energy()` constrains the shared exact grammar to a
+requested generated pair map and selects its maximum-weight derivation.
+The boundary removes any fixed scaffold pairs from the target and checks
+that traceback returns exactly the requested generated pairs. A mismatch
+is returned as unreachable. This uses the same local weights as inside.
+
+`ExactSession::probability()` divides that selected derivation's weight by
+the inside partition function. If multiple derivations emit the same pair
+map, this numerator is their maximum weight, rather than their summed mass.
+The energy is therefore a best-derivation energy, and the reported probability
+is not automatically the summed probability of the pair map. Corrected WMB
+closure and the finite regression witnesses do not supply a general
+unambiguity proof.
+
+Successful reachable evaluation is sound for the requested pair map. The
+local constraint predicates and final check have regression coverage, but
+no general target-completeness proof: an unreachable result is not a
+certificate that no grammar derivation exists. Scaffold-split invariance
+and full equivalence to every published pseudoknot weight formula are also
+not established. See the [constrained output-grouping witness](../test/scfg2_constrained_small_n_grouping_test.cc)
+and [validation guide](validation.md).
+
 For API result fields, error contracts, and streaming callbacks, see the
 [C++ API](../src/scfg2/api/README.md).

@@ -44,7 +44,7 @@ Scientific reference: Ronny Lorenz et al. ViennaRNA Package 2.0.
 | `src/scfg2/weights/internal_loop.hh`, runtime and pair-table adapters | Local long-loop extrapolation and backend adapters using ViennaRNA's model tables/API. The small-loop reference delegates to Vienna's helper; the log consumer uses the translated helper above. | Keep the Vienna/model provenance in scope. These wrappers are not a replacement thermodynamic backend or an independently cleared MIT component. |
 | `cmake/BundledViennaRNA.cmake` | Locally organized build module preserving the inherited Vienna source inventory and exported static-library contract. | Build refactoring does not change the terms of the compiled sources or remove their attribution. |
 | `src/scfg2/weights/pseudoknot_parameters.hh` and `params/*.par` | Retained CParty/DP09 parameterization, band multipliers and inherited parameter files. | Model/data origin is separate from authorship of the executor; the table provenance is recorded below. |
-| `test/oracle/legacy_cparty/patches/` and `results/wmb_closure_*/legacy_instrumentation.patch` | Local corrections/instrumentation with small original CParty context hunks. The checked-out oracle is external to production. | Retain upstream context attribution; these patches are excluded from the Python sdist/wheel by the current explicit packaging rules. |
+| `test/oracle/legacy_cparty/patches/` | Local corrections with small original CParty context hunks. The checked-out oracle is external to production. | Retain upstream context attribution; these patches are excluded from the Python sdist/wheel by the current explicit packaging rules. |
 
 ## Parameter-file provenance
 

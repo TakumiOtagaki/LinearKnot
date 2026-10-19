@@ -107,8 +107,8 @@ int main() {
        14.327075804769787},
       // Independent current patched legacy probe with only completed WMB on
       // non-weakly-closed intervals zeroed. Seed 20261008, rand50_0024 and
-      // rand100_0098, remeasured after 0009; historical values are preserved
-      // in results/wmb_closure_20261010/cases.tsv. See the WIP correction note.
+      // rand100_0098, remeasured after 0009. These corrected-policy goldens
+      // are separate from the LegacyCompatible oracle configuration.
       {"CCAUGAAAGGACCACUGUUUUGUCGUACUGGGCCCGUAGGGUUCCACGGU",
        "(...)(...(..(...)(..(...)(...))(.((....)).))(...))",
        37.8242027529809,

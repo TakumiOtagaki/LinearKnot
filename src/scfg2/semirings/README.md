@@ -73,15 +73,16 @@ The factorized consumer uses the equivalent normalized form for numerical stabil
 `term_post = post(parent) * exp(c_actual-alpha(parent))`, accumulated into
 each child occurrence. Here `post` is the expected number of state visits
 in a derivation. It is a binary presence probability only when that state
-cannot occur twice in one derivation. The long-input shared-BE/WMBP overlap
-audit led to an explicit shared-geometry guard restoring legacy's BE
-availability boundary; see
-`documents/eval_structure/scfg2_outside_pair_occurrence_audit_20261008.md`.
+cannot occur twice in one derivation. Shared BE/WMBP joins enforce the
+[BE-availability geometry contract](../deductions/README.md#vpwmb-geometry-contract).
+The [overlap regression](../../../test/scfg2_wmbp_be_availability_test.cc)
+checks target pair use, patched-legacy inside values and exact/beam outside.
 The same terms support stochastic traceback and posterior decoding.
 Their finite uniform-width forest target is O(n b²); admitted
 candidate/aggregate terms are stored instead of re-ranking a second beam.
 Public beam outside and CapR/Raccess use retained numeric regeneration
-instead, with O(nb + b²) reverse storage; see `api/README.md`. Zeroed chart entries are erased for this
+instead, with O(nb + b²) reverse storage; see the
+[API storage contracts](../api/README.md). Zeroed chart entries are erased for this
 representation; captured old state IDs remain valid. Nonzero VP/WMBP chart
 entries and the existing indexes retain their original forward semantics.
 

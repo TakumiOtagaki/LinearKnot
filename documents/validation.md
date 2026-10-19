@@ -30,6 +30,26 @@ Compare the oracle with explicit `WmbClosurePolicy::LegacyCompatible`.
 The production default requires completed-WMB weak closure. Legacy MFE,
 sampling or BPP are not interchangeable semantic references for inside.
 
+## Focused regression witnesses
+
+- [Shared BE/WMBP availability](../test/scfg2_wmbp_be_availability_test.cc)
+  checks the no-overlap boundary against patched-legacy inside/marker values
+  and exact/saturated-beam outside.
+- [Log-weight tests](../test/scfg2_log_weight_test.cc) cover multiloop closing
+  neighbors, PF/log factor agreement and fixed-structure consumers.
+- [Runtime snapshot tests](../test/scfg2_runtime_snapshot_test.cc) cover the
+  parameter owner and its independent test-only observations.
+- [Constrained output grouping](../test/scfg2_constrained_small_n_grouping_test.cc)
+  compares small-input pair-map groups and poisons diagnostic carriers to
+  check that they do not supply hidden grammar mass.
+- [VP split-range fixture](../test/fixtures/scfg2_vp_split_range_20261009/README.md)
+  records the single-maximal-scaffold-pair case where the full split sum is
+  required. Current energy goldens are in the
+  [inside-oracle test](../test/scfg2_exact_inside_oracle_test.cc).
+
+These are finite witnesses for the documented contracts, not general proofs
+of unambiguity, constraint completeness or full published-model equivalence.
+
 ## Package and installed-command checks
 
 The Python distribution installs a native CLI. Source/wheel checks enforce

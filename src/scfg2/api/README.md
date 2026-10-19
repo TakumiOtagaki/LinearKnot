@@ -439,8 +439,8 @@ build/linearknot mea --sequence AAAGGGAAAGGGCCCAAACCCAAA \
 Output includes the MEA union and its `EA` score. `--exact` selects the exact
 reference, `-o FILE` writes records, and `--stats` prints timing/work to stderr.
 The scaffold's LinearPartition MEA preprocessing is separate from this PK
-decoder. See `documents/model.md` for
-the legacy source audit, exhaustive oracle and length-scaling evidence.
+decoder. See the [objective definitions](../../../documents/model.md#structure-selection)
+and [decoder regression tests](../../../test/scfg2_mea_test.cc).
 
 ## Hamada gamma-centroid decoding
 
@@ -471,8 +471,8 @@ build/linearknot centroid -i scaffolds.txt -b 100 --gamma 1 --stats
 
 Output includes `EG`, `ETP` and `ETN`, with `EG=gamma*ETP+ETN`.
 `linearknot mea` retains the legacy base-level objective and its `EA` output.
-See `documents/model.md` for the
-gain definition, different-output witness and exhaustive/length evidence.
+See the [objective definitions](../../../documents/model.md#structure-selection)
+and [decoder regression tests](../../../test/scfg2_mea_test.cc).
 
 ## Hotspot scaffold proposal API
 
@@ -613,16 +613,17 @@ seed, target or accessibility lengths where applicable. Beam functions use
 caches cannot mix policies. Existing CLIs use the corrected default.
 
 This correction changes the conditional ensemble, not just its evaluator.
-Unguarded legacy parity is scoped to `LegacyCompatible`; independent corrected
-oracle evidence and remaining Psm/split-invariance limitations are recorded in
-`documents/model.md`.
+Legacy parity is scoped to `LegacyCompatible`; see the
+[model scope](../../../documents/model.md) and
+[validation guide](../../../documents/validation.md).
 No general unambiguity or full SI weight-equivalence theorem is claimed.
 
-As of 2026-10-11 the official oracle is upstream `800e95a` plus local
-0001/0002/0006/0007, without completed-WMB closure. It compares exact inside
-log Z and PF free energy in compatibility mode; BPP and legacy-MFE equality
-are not part of that contract. Pin, build identity and reproduction are in
-`test/oracle/legacy_cparty/README.md`.
+The official oracle pins upstream CParty plus the ordered local patches in
+[config.json](../../../test/oracle/legacy_cparty/config.json), without
+completed-WMB closure. It compares exact inside log Z and PF free energy in
+compatibility mode; BPP and legacy-MFE equality are not part of that contract.
+See the [oracle instructions](../../../test/oracle/legacy_cparty/README.md)
+for the pin, patch inventory, build identity and reproduction.
 
 ## Exact API
 
@@ -742,6 +743,6 @@ For an installed library, use `cmake --install build --prefix PREFIX`, then
 The installed `LinearKnot::scfg2_exact` and `LinearKnot::scfg2_beam` targets propagate
 the bundled static `LinearKnot::RNA` dependency and include path.
 
-See `src/scfg2/README.md` and
-`documents/scfg2/energy_evaluator_contract_20260716.md` for semantic guarantees
-and non-guarantees.
+See the [shared-kernel guide](../README.md) and the
+[fixed-target evaluation contract](../../../documents/model.md#fixed-target-energy-and-probability)
+for semantic guarantees and limits.
