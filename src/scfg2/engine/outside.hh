@@ -77,8 +77,9 @@ Chart<typename Semiring::value_type> run_regenerated_outside(
     DeductionGenerator &&generate,
     LocalWeightFn &&local_weight,
     ChildItemFn child_item = {},
-    DeductionObserver observe = {}) {
-  Chart<typename Semiring::value_type> outside(Semiring::zero());
+    DeductionObserver observe = {},
+    cand_pos_t dense_length = 0) {
+  Chart<typename Semiring::value_type> outside(Semiring::zero(), nullptr, dense_length);
   outside.set(root, Semiring::one());
   for (auto cursor = schedule.rbegin(); cursor != schedule.rend(); ++cursor) {
     const auto beta = outside.get(*cursor);

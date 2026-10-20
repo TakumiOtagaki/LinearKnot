@@ -63,7 +63,8 @@ int main(int argc, char **argv) {
         scfg2::semirings::LogSumExpSemiring>(
             scfg2::engine::build_pkfree_basic_exact_schedule(n, ctx), ctx,
             [](const auto &) { return true; },
-            [](const auto &, const auto &, const auto &, const auto &, auto) {});
+            [](const auto &, const auto &, const auto &, const auto &, auto) {},
+            scfg2::replay::ExactExecutionOptions::numeric());
     const double log_z = chart.get({scfg2::grammar::NonTerminal::W, 1, n, -1, -1});
     if (!std::isfinite(log_z)) {
       throw std::runtime_error("scfg2 constrained PF returned non-finite log total");

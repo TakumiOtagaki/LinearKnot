@@ -61,6 +61,13 @@ are `-infinity`, neutral factors are zero, and products add log factors.
 `weight_for()` raw projections and `WFinalExactInsideContext` are bounded
 comparison/observation interfaces.
 
+Numeric exact forward execution may skip this pure local-weight lookup when
+a canonical child is exactly semiring zero. It preserves the local factor
+and multiplication order for every live product; finite log weights are
+never thresholded. Reference execution still evaluates zero-child candidates
+for observation. Reverse propagation evaluates the shared local weight even
+when the inside product is zero, since a child adjoint can remain nonzero.
+
 The bundled Vienna PF builder has one shared raw/log table builder.
 Its log entry evaluates exponents directly, preserving temperature,
 `pf_smooth`, dangle/mismatch smoothing and special-loop tables.

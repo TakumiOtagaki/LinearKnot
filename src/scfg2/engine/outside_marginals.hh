@@ -44,21 +44,21 @@ OutsideMarginalSummary collect_outside_marginals_by_item(
       contributions.push_back(LanePairMarginal{i, j, 1.0, 0.0, 1.0});
     }
   }
-  for (const auto &[item, value] : chart.values()) {
+  chart.for_each_entry([&](const auto &item, const auto &value) {
     const bool round_owner =
         item.nonterminal == grammar::NonTerminal::V;
     const bool square_owner =
         item.nonterminal == grammar::NonTerminal::VP;
-    if (!round_owner && !square_owner) continue;
+    if (!round_owner && !square_owner) return;
     if (ctx.pair_partner(item.i) == item.j ||
         ctx.pair_partner(item.j) == item.i) {
-      continue;
+      return;
     }
     const std::optional<double> probability = posterior(item, value);
-    if (!probability.has_value()) continue;
+    if (!probability.has_value()) return;
     contributions.push_back(LanePairMarginal{item.i, item.j,
         round_owner ? *probability : 0.0, square_owner ? *probability : 0.0, *probability});
-  }
+  });
 
   // Two stable counting passes on bounded nucleotide coordinates give the
   // public lexicographic pair order in O(number_of_owners + n), without an

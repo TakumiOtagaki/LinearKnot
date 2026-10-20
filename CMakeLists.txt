@@ -149,6 +149,11 @@ add_custom_target(
 
 include(CTest)
 if(BUILD_TESTING)
+  add_executable(scfg2_exact_numeric_execution_test test/scfg2_exact_numeric_execution_test.cc)
+  target_link_libraries(scfg2_exact_numeric_execution_test PRIVATE LinearKnot::scfg2_exact)
+  add_test(NAME scfg2_exact_numeric_execution COMMAND scfg2_exact_numeric_execution_test)
+  set_tests_properties(scfg2_exact_numeric_execution PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
   add_executable(scfg2_exact_api_test test/scfg2_exact_api_test.cc)
   target_link_libraries(scfg2_exact_api_test PRIVATE LinearKnot::scfg2_exact)
 

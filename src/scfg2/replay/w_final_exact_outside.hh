@@ -25,7 +25,7 @@ engine::Chart<double> run_w_final_exact_regenerated_outside(
         return candidates;
       },
       [&](const deductions::Deduction &d) { return weight.local_weight_for(d); },
-      engine::RuntimeDeductionChildItem{}, std::move(observe));
+      engine::RuntimeDeductionChildItem{}, std::move(observe), inside.dense_length());
 }
 
 }  // namespace cparty::scfg2::replay

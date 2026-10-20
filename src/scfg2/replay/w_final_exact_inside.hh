@@ -28,6 +28,7 @@
 #include "scfg2/weights/context_wmbw.hh"
 
 #include <initializer_list>
+#include <array>
 #include <optional>
 #include <algorithm>
 #include <type_traits>
@@ -468,11 +469,37 @@ class WFinalInsideContext final : public engine::BasicExactWeightContext,
 using WFinalExactInsideContext = WFinalInsideContext<false>;
 using WFinalLogWeightContext = WFinalInsideContext<true>;
 
+// Explicit numeric-exact policy. Reference callers retain the complete chart
+// and candidate observations. The fast policy omits zero-child observations
+// and VM values whose sole canonical consumer, V(i,j), cannot be generated.
+// It must not be used for finite-beam retention or custom child products.
+struct ExactExecutionOptions {
+  bool dense_primary = false;
+  bool skip_zero_children = false;
+  bool omit_unused_vm = false;
+
+  static constexpr ExactExecutionOptions numeric() { return {true, true, true}; }
+};
+
 template <class Chart>
 typename Chart::value_type runtime_child_total_for_deduction(
     const Chart &chart,
     const deductions::Deduction &deduction,
     std::size_t child_idx);
+
+template <class Semiring, bool SkipZeroChildren = false>
+struct RuntimeProductContribution {
+  template <class Chart, class LocalWeight>
+  typename Semiring::value_type operator()(
+      const deductions::Deduction &deduction, const Chart &chart,
+      LocalWeight local) const {
+    auto contribution = Semiring::from_weight(local);
+    for (std::size_t c = 0; c < deduction.child_count; ++c)
+      contribution = Semiring::times(contribution,
+          runtime_child_total_for_deduction(chart, deduction, c));
+    return contribution;
+  }
+};
 
 template <class Semiring, class Chart>
 void materialize_storage_only_exact_carriers_for_deduction(const Chart &chart,
@@ -519,12 +546,32 @@ void update_w_final_exact_dp_item_with_provider_and_contribution(
     if (!deduction_allows(deduction)) {
       continue;
     }
-    const auto local = weight.local_weight_for(deduction);
-    if (weights::is_zero(local)) continue;
-    const value_type contribution =
-        contribution_for(deduction, chart, local);
-    total = Semiring::plus(total, contribution);
-    candidate_observer(item, deduction, contribution, chart, local);
+    if constexpr (std::is_same_v<std::decay_t<ContributionFn>,
+                                RuntimeProductContribution<Semiring, true>>) {
+      // Only the canonical numeric product opts in. Custom/beam products can
+      // reconstruct private aggregates and need not equal these child values.
+      std::array<value_type, 3> children;
+      bool dead = false;
+      for (std::size_t c = 0; c < deduction.child_count; ++c) {
+        children[c] = runtime_child_total_for_deduction(chart, deduction, c);
+        if (Semiring::is_zero(children[c])) { dead = true; break; }
+      }
+      if (dead) continue;
+      const auto local = weight.local_weight_for(deduction);
+      if (weights::is_zero(local)) continue;
+      auto contribution = Semiring::from_weight(local);
+      // Preserve local, child0, child1, child2 arithmetic order exactly.
+      for (std::size_t c = 0; c < deduction.child_count; ++c)
+        contribution = Semiring::times(contribution, children[c]);
+      total = Semiring::plus(total, contribution);
+      candidate_observer(item, deduction, contribution, chart, local);
+    } else {
+      const auto local = weight.local_weight_for(deduction);
+      if (weights::is_zero(local)) continue;
+      const value_type contribution = contribution_for(deduction, chart, local);
+      total = Semiring::plus(total, contribution);
+      candidate_observer(item, deduction, contribution, chart, local);
+    }
   }
   chart.set(item, total);
   after_item_observer(item, chart);
@@ -547,9 +594,10 @@ run_w_final_exact_dp_schedule_with_provider_item_observers_and_contribution(
     CandidateObserverFn &&candidate_observer,
     BeforeItemObserverFn &&before_item_observer,
     AfterItemObserverFn &&after_item_observer,
-    ContributionFn &&contribution_for) {
+    ContributionFn &&contribution_for,
+    cand_pos_t dense_length = 0) {
   engine::AllLocalWeightModel<Context> weight(&ctx);
-  engine::Chart<typename Semiring::value_type> chart(Semiring::zero());
+  engine::Chart<typename Semiring::value_type> chart(Semiring::zero(), nullptr, dense_length);
   for (const auto &item : schedule) {
     update_w_final_exact_dp_item_with_provider_and_contribution<Semiring>(
         item,
@@ -580,19 +628,24 @@ run_w_final_exact_dp_schedule_with_item_observers_and_contribution(
     CandidateObserverFn &&candidate_observer,
     BeforeItemObserverFn &&before_item_observer,
     AfterItemObserverFn &&after_item_observer,
-    ContributionFn &&contribution_for) {
+    ContributionFn &&contribution_for,
+    cand_pos_t dense_length = 0,
+    bool omit_unused_vm = false) {
   return run_w_final_exact_dp_schedule_with_provider_item_observers_and_contribution<
       Semiring>(
       schedule,
       ctx,
       [&](const deductions::ItemKey &item) {
+        if (omit_unused_vm && item.nonterminal == grammar::NonTerminal::VM &&
+            !deductions::exact_v_family_active(ctx, item.i, item.j))
+          return std::vector<deductions::Deduction>{};
         return deductions::generate_exact_basic_deductions_for_item(item, ctx);
       },
       std::forward<DeductionAllowsFn>(deduction_allows),
       std::forward<CandidateObserverFn>(candidate_observer),
       std::forward<BeforeItemObserverFn>(before_item_observer),
       std::forward<AfterItemObserverFn>(after_item_observer),
-      std::forward<ContributionFn>(contribution_for));
+      std::forward<ContributionFn>(contribution_for), dense_length);
 }
 
 template <class Semiring,
@@ -646,14 +699,7 @@ typename Semiring::value_type runtime_deduction_contribution(
     const Chart &chart,
     const deductions::Deduction &deduction,
     LocalWeight local) {
-  typename Semiring::value_type contribution = Semiring::from_weight(local);
-  for (std::size_t child_idx = 0; child_idx < deduction.child_count;
-       ++child_idx) {
-    contribution = Semiring::times(
-        contribution,
-        runtime_child_total_for_deduction(chart, deduction, child_idx));
-  }
-  return contribution;
+  return RuntimeProductContribution<Semiring>{}(deduction, chart, local);
 }
 
 template <class Semiring,
@@ -664,18 +710,31 @@ engine::Chart<typename Semiring::value_type> run_w_final_exact_dp_schedule(
     const std::vector<deductions::ItemKey> &schedule,
     Context &ctx,
     DeductionAllowsFn &&deduction_allows,
-    CandidateObserverFn &&candidate_observer) {
-  return run_w_final_exact_dp_schedule_with_contribution<Semiring>(
+    CandidateObserverFn &&candidate_observer,
+    ExactExecutionOptions options = {}) {
+  if constexpr (weights::LogContext<Context>::value &&
+      (std::is_same_v<Semiring, semirings::LogSumExpSemiring> ||
+       std::is_same_v<Semiring, semirings::LogMaxSemiring>)) {
+    if (options.skip_zero_children) {
+      return run_w_final_exact_dp_schedule_with_item_observers_and_contribution<Semiring>(
+          schedule, ctx, std::forward<DeductionAllowsFn>(deduction_allows),
+          std::forward<CandidateObserverFn>(candidate_observer),
+          [](const auto &, const auto &) {}, [](const auto &, const auto &) {},
+          RuntimeProductContribution<Semiring, true>{},
+          options.dense_primary ? ctx.sequence_length() : 0, options.omit_unused_vm);
+    }
+  } else {
+    if (options.skip_zero_children || options.omit_unused_vm || options.dense_primary)
+      throw std::invalid_argument("numeric exact execution requires a numeric log semiring");
+  }
+  return run_w_final_exact_dp_schedule_with_item_observers_and_contribution<Semiring>(
       schedule,
       ctx,
       std::forward<DeductionAllowsFn>(deduction_allows),
       std::forward<CandidateObserverFn>(candidate_observer),
-      [](const deductions::Deduction &deduction,
-         const auto &chart,
-         auto local) {
-        return runtime_deduction_contribution<Semiring>(
-            chart, deduction, local);
-      });
+      [](const auto &, const auto &) {}, [](const auto &, const auto &) {},
+      RuntimeProductContribution<Semiring>{},
+      options.dense_primary ? ctx.sequence_length() : 0, options.omit_unused_vm);
 }
 
 template <class Semiring = semirings::SumProductSemiring>
@@ -698,7 +757,8 @@ template <class Semiring = semirings::MaxProductSemiring, class Context, class D
 engine::ViterbiRunResult<double> run_w_final_exact_viterbi_schedule_with_context(
     const std::vector<deductions::ItemKey> &schedule,
     Context &ctx,
-    DeductionAllowsFn &&deduction_allows) {
+    DeductionAllowsFn &&deduction_allows,
+    ExactExecutionOptions options = {}) {
   engine::ChoiceMap<double> choices;
   StorageOnlyExactCarrierObserver<Semiring> carrier_observer;
   auto chart = run_w_final_exact_dp_schedule<Semiring>(
@@ -718,7 +778,7 @@ engine::ViterbiRunResult<double> run_w_final_exact_viterbi_schedule_with_context
         }
         if constexpr (!weights::LogContext<Context>::value)
           carrier_observer(item, deduction, contribution, current_chart, local);
-      });
+      }, options);
   return {std::move(chart), std::move(choices)};
 }
 
@@ -733,7 +793,8 @@ engine::ViterbiTracebackResult<double> run_w_final_exact_viterbi_traceback(
   }
   auto run = run_w_final_exact_viterbi_schedule_with_context<S>(
       engine::build_pkfree_basic_exact_schedule(static_cast<cand_pos_t>(owner.length()), ctx),
-      ctx, [](const auto &) { return true; });
+      ctx, [](const auto &) { return true; },
+      LogDomain ? ExactExecutionOptions::numeric() : ExactExecutionOptions{});
   const cand_pos_t n = static_cast<cand_pos_t>(owner.length());
   const deductions::ItemKey root{grammar::NonTerminal::W, 1, n, -1, -1};
   return engine::build_viterbi_traceback_result(root, std::move(run), ctx);
@@ -762,7 +823,8 @@ run_w_final_exact_output_constrained_viterbi_traceback(
       storage::exact_store::reset();
     }
     auto run = run_w_final_exact_viterbi_schedule_with_context<S>(
-        schedule, ctx, std::forward<decltype(allows)>(allows));
+        schedule, ctx, std::forward<decltype(allows)>(allows),
+        LogDomain ? ExactExecutionOptions::numeric() : ExactExecutionOptions{});
     return engine::build_viterbi_traceback_result(root, std::move(run), ctx);
   };
 

@@ -71,13 +71,21 @@ budgets. Keeping a complete alternative forest is a different contract.
 ## Exact numeric outside and profiles
 
 Exact BPP and profiles store numeric states and regenerate deductions.
+Their primary numeric states occupy fourteen dense triangular planes;
+presence flags distinguish an absent item from an explicitly stored zero.
+Four-coordinate BE states retain sparse keys. Initializing these planes
+costs O(n^2) time and space. Numeric marginal collection traverses them
+directly without materializing a second hash map. Finite-beam charts remain
+sparse, so they do not acquire this quadratic allocation.
+
 With fixed local-loop model size, peak logical space is O(n^2 + nr).
 This bound does not include the separate traceback storage used by exact
 MFE, posterior decoding, sampling or subopt.
 
 Let S be exact schedule size, D the number of generated deductions, and
 T_exact the complete exact forward cost, including geometry and generation.
-S = O(n^2), including nested scaffold BE pairs. Expected-hash bounds are
+S = O(n^2), including nested scaffold BE pairs. With expected constant-time
+sparse BE lookup, the bounds are
 
 ```text
 BPP:      O(T_exact + D + S + n) time
@@ -86,6 +94,9 @@ Profiles: O(T_exact + (r+1)D + rS + nr) time.
 
 The finite-beam theorem does not establish an exact whole-call cubic-time
 bound. Fixed local-loop size does not by itself bound every geometry scan.
+Skipping evaluation after a zero child and omitting VM without an admissible
+V consumer reduce work without changing the nonzero derivations. They do
+not establish a smaller worst-case bound on deduction generation.
 
 ## Sampling and suboptimal enumeration
 

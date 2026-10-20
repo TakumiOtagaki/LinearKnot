@@ -30,7 +30,7 @@ inline ProfileResult exact_profiles(const std::string &sequence,
   const auto schedule = engine::build_pkfree_basic_exact_schedule(n, ctx);
   const auto chart = replay::run_w_final_exact_dp_schedule<Semiring>(schedule, ctx,
       [](const deductions::Deduction &) { return true; },
-      [](const auto &...) {});
+      [](const auto &...) {}, replay::ExactExecutionOptions::numeric());
   const deductions::ItemKey root{grammar::NonTerminal::W, 1, n, -1, -1};
   const double root_value = chart.get(root);
   if (!std::isfinite(root_value)) {

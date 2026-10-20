@@ -40,6 +40,22 @@ replay alpha-ranked execution while retaining selected posterior maxima.
 Sampling and subopt retain alternative derivation representations and have
 separate output-dependent resource contracts.
 
+Numeric exact inside, MFE, BPP and profiles explicitly select
+`ExactExecutionOptions::numeric()`. Primary spans use dense triangles with
+separate presence flags; BE retains its full sparse key. A zero child
+(`-infinity`, never a finite cutoff) skips local-weight evaluation. Live
+products retain local/child arithmetic order and candidate order. VM(i,j)
+is omitted only when the shared V admission predicate is false: its sole
+canonical consumer is V_VM at the same endpoints. These changes preserve
+all other state values and root results; unused VM entries become zero.
+
+Internal exact runners default to the reference policy, preserving full
+VM values and zero-contribution observations. Numeric execution explicitly
+allows those observations to be omitted. Arithmetic-tape/factorized
+consumers, raw carrier observations and finite-beam retention keep their
+existing execution policy. Regenerated outside never applies the forward
+zero-product shortcut: a zero child can still receive a nonzero adjoint.
+
 The model, completed-WMB policy and decoding objectives are documented in
 [the model guide](../../documents/model.md). Resource assumptions and bounds
 are in [complexity](../../documents/complexity.md).

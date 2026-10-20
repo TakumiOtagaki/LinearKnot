@@ -51,7 +51,8 @@ InsideResult ExactSession::inside() {
     const auto chart = replay::run_w_final_exact_dp_schedule<semirings::LogSumExpSemiring>(
         engine::build_pkfree_basic_exact_schedule(n, ctx), ctx,
         [](const auto &) { return true; },
-        [](const auto &, const auto &, const auto &, const auto &, auto) {});
+        [](const auto &, const auto &, const auto &, const auto &, auto) {},
+        replay::ExactExecutionOptions::numeric());
     out.log_partition_weight = chart.get({grammar::NonTerminal::W, 1, n, -1, -1});
     out.reachable = std::isfinite(out.log_partition_weight);
     if (!out.reachable) {
@@ -84,7 +85,7 @@ OutsideResult ExactSession::outside() const {
     using S = semirings::LogSumExpSemiring;
     const auto chart = replay::run_w_final_exact_dp_schedule<S>(schedule, ctx,
         [](const deductions::Deduction &) { return true; },
-        [](const auto &...) {});
+        [](const auto &...) {}, replay::ExactExecutionOptions::numeric());
     const deductions::ItemKey root{
         grammar::NonTerminal::W, 1, n, -1, -1};
     const auto root_value = chart.get(root);
