@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import subprocess
 import tempfile
@@ -37,6 +38,7 @@ GROUP\t1\t1\t-2\t-2\t0\t1\t1
 
 def main() -> int:
     root = Path(__file__).resolve().parents[2]
+    build = Path(os.environ.get("SCFG2_BUILD_DIR", root / "build")).resolve()
     sequence = "UUAUAUGGGUAUUAUUCUCA"
     arguments = [
         sequence,
@@ -44,7 +46,7 @@ def main() -> int:
         "64", "2", "4", "1", "4", "none",
     ]
     sequential_output = subprocess.run(
-        [str(root / "build/scfg2_hotspot_viterbi_tool"), *arguments],
+        [str(build / "scfg2_hotspot_viterbi_tool"), *arguments],
         check=True,
         text=True,
         stdout=subprocess.PIPE,
@@ -54,9 +56,9 @@ def main() -> int:
             sys.executable,
             str(root / "test/tools/run_scfg2_parallel_hotspot_viterbi.py"),
             "--proposal-tool",
-            str(root / "build/scfg2_hotspot_proposal_tool"),
+            str(build / "scfg2_hotspot_proposal_tool"),
             "--worker-tool",
-            str(root / "build/scfg2_fixed_scaffold_viterbi_tool"),
+            str(build / "scfg2_fixed_scaffold_viterbi_tool"),
             "--candidate-jobs", "2",
             *arguments,
         ],
@@ -109,9 +111,9 @@ def main() -> int:
                 sys.executable,
                 str(root / "test/tools/run_scfg2_parallel_hotspot_viterbi.py"),
                 "--proposal-tool",
-                str(root / "build/scfg2_hotspot_proposal_tool"),
+                str(build / "scfg2_hotspot_proposal_tool"),
                 "--worker-tool",
-                str(root / "build/scfg2_fixed_scaffold_viterbi_tool"),
+                str(build / "scfg2_fixed_scaffold_viterbi_tool"),
                 "--candidate-jobs", "2",
                 "--linearfold-bin", str(fake_linearfold),
                 "--linearfold-beam-width", "100",
@@ -133,7 +135,7 @@ def main() -> int:
             sys.executable,
             str(root / "test/tools/run_scfg2_parallel_hotspot_viterbi.py"),
             "--proposal-tool",
-            str(root / "build/scfg2_hotspot_proposal_tool"),
+            str(build / "scfg2_hotspot_proposal_tool"),
             "--worker-tool", "/bin/false",
             "--candidate-jobs", "2",
             *arguments,
