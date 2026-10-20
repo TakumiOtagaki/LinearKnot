@@ -2,6 +2,7 @@
 #define CPARTY_SCFG2_BEAM_WM_RETAINED_JOIN_AGENDA_HH
 
 #include "scfg2/beam/wm_start_prefix.hh"
+#include "scfg2/beam/column_store.hh"
 #include "scfg2/deductions/expand_basic.hh"
 
 #include <algorithm>
@@ -33,8 +34,8 @@ class WmRetainedJoinAgenda {
                     std::size_t start_prefix_width,
                     const std::vector<cand_pos_t> *forced_start_parents = nullptr) {
     column_ = j;
-    deductions_by_parent_.clear();
-    start_contribution_by_parent_.clear();
+    deductions_by_parent_.reset_column(j);
+    start_contribution_by_parent_.reset_column(j);
     parents_.clear();
 
     const auto append = [&](const deductions::ItemKey &parent,
@@ -181,15 +182,9 @@ class WmRetainedJoinAgenda {
  private:
   cand_pos_t column_ = -1;
   WmRetainedJoinAgendaStats stats_{};
-  std::unordered_map<deductions::ItemKey,
-                     std::vector<deductions::Deduction>,
-                     deductions::ItemKeyHash,
-                     deductions::ItemKeyEq>
+  ColumnStore<std::vector<deductions::Deduction>, grammar::NonTerminal::WM, 8>
       deductions_by_parent_;
-  std::unordered_map<deductions::ItemKey,
-                     Value,
-                     deductions::ItemKeyHash,
-                     deductions::ItemKeyEq>
+  ColumnStore<Value, grammar::NonTerminal::WM>
       start_contribution_by_parent_;
   std::vector<deductions::ItemKey> parents_;
   WmStartPrefixColumn<Semiring> start_prefix_;

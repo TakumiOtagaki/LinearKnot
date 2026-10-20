@@ -74,6 +74,7 @@ targets=(
   scfg2_bounded_outer_alpha_lookup_test
   scfg2_outer_max_pool_test
   scfg2_primary_lookup_index_test
+  scfg2_column_store_test
   scfg2_numeric_primary_lookup_test
   scfg2_beam_numeric_lookup_test
   scfg2_outer_ranked_outside_test

@@ -32,6 +32,11 @@ sampling or BPP are not interchangeable semantic references for inside.
 
 ## Focused regression witnesses
 
+- [Private column storage](../test/scfg2_column_store_test.cc) compares
+  indexed source buffers with an independent full-key map, including ordered
+  deduction fields, empty-but-present moved buffers, noncanonical keys,
+  pointer lifetimes, copy/move, graph ownership, throwing value constructors
+  and allocation failures in both metadata and optional source reservations.
 - [Beam numeric lookup](../test/scfg2_beam_numeric_lookup_test.cc) compares
   indexed and reference execution under both ranking and closure policies,
   including full retained chart iteration, value bits, choices, ties and

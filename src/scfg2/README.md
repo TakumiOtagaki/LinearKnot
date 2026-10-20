@@ -78,6 +78,16 @@ Scaffold forcing, the pilot and the completed numeric guide inherit the
 option; other semirings and derivation representations retain their
 original storage policy.
 
+Private agendas confined to one end column store canonical parents in
+start-indexed slots. Their independent parent lists and per-parent source
+vectors retain traversal and deduction order. Other complete keys use a
+sparse fallback. Column boundaries release only occupied values and source
+buffers; metadata grows geometrically and contains no default graph values.
+If metadata allocation fails, that column uses the full-key map. Aggregate
+pointers remain stable within the column and expire at its next reset.
+Source vectors request an initial capacity of eight entries; failure of this
+optional reservation falls back to ordinary vector growth.
+
 The V agenda queues compact rule/split records in first-arrival order and
 expands them through the shared child schema before evaluation. Completion
 ranking reads the immutable sorted alpha rows and uses an indexed heap for

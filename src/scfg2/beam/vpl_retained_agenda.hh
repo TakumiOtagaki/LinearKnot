@@ -1,6 +1,8 @@
 #ifndef CPARTY_SCFG2_BEAM_VPL_RETAINED_AGENDA_HH
 #define CPARTY_SCFG2_BEAM_VPL_RETAINED_AGENDA_HH
 
+#include "scfg2/beam/column_store.hh"
+
 #include "scfg2/beam/vpl_start_prefix.hh"
 #include "scfg2/deductions/expand_basic.hh"
 #include "scfg2/deductions/generate_exact_basic.hh"
@@ -31,8 +33,8 @@ class VplRetainedAgenda {
                     const std::vector<cand_pos_t> &vp_starts,
                     std::size_t width) {
     column_ = j;
-    deductions_by_parent_.clear();
-    contribution_by_parent_.clear();
+    deductions_by_parent_.reset_column(j);
+    contribution_by_parent_.reset_column(j);
     parents_.clear();
     const auto append = [&](cand_pos_t i, Value aggregate, cand_pos_t best_k) {
       const deductions::ItemKey parent{
@@ -123,14 +125,8 @@ class VplRetainedAgenda {
  private:
   cand_pos_t column_ = -1;
   VplRetainedAgendaStats stats_{};
-  std::unordered_map<deductions::ItemKey,
-                     std::vector<deductions::Deduction>,
-                     deductions::ItemKeyHash,
-                     deductions::ItemKeyEq> deductions_by_parent_;
-  std::unordered_map<deductions::ItemKey,
-                     Value,
-                     deductions::ItemKeyHash,
-                     deductions::ItemKeyEq> contribution_by_parent_;
+  ColumnStore<std::vector<deductions::Deduction>, grammar::NonTerminal::VPL, 8> deductions_by_parent_;
+  ColumnStore<Value, grammar::NonTerminal::VPL> contribution_by_parent_;
   std::vector<deductions::ItemKey> parents_;
   VplStartPrefixColumn<Semiring> prefix_;
 };

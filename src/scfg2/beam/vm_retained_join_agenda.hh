@@ -5,6 +5,7 @@
 
 #include "scfg2/deductions/expand_basic.hh"
 #include "scfg2/beam/vm_wmp_base_prefix.hh"
+#include "scfg2/beam/column_store.hh"
 
 #include <algorithm>
 #include <cstddef>
@@ -33,8 +34,8 @@ class VmRetainedJoinAgenda {
                     RetainedStartsFn &&retained_starts,
                     std::size_t base_prefix_width) {
     column_ = j;
-    deductions_by_parent_.clear();
-    base_contribution_by_parent_.clear();
+    deductions_by_parent_.reset_column(j);
+    base_contribution_by_parent_.reset_column(j);
     parents_.clear();
 
     const auto append = [&](const deductions::ItemKey &parent,
@@ -165,15 +166,9 @@ class VmRetainedJoinAgenda {
  private:
   cand_pos_t column_ = -1;
   VmRetainedJoinAgendaStats stats_{};
-  std::unordered_map<deductions::ItemKey,
-                     std::vector<deductions::Deduction>,
-                     deductions::ItemKeyHash,
-                     deductions::ItemKeyEq>
+  ColumnStore<std::vector<deductions::Deduction>, grammar::NonTerminal::VM, 8>
       deductions_by_parent_;
-  std::unordered_map<deductions::ItemKey,
-                     Value,
-                     deductions::ItemKeyHash,
-                     deductions::ItemKeyEq>
+  ColumnStore<Value, grammar::NonTerminal::VM>
       base_contribution_by_parent_;
   std::vector<deductions::ItemKey> parents_;
   VmWmpBasePrefixColumn<Semiring> base_prefix_;

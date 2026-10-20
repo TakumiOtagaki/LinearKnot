@@ -1,6 +1,8 @@
 #ifndef CPARTY_SCFG2_BEAM_WMBW_RETAINED_JOIN_AGENDA_HH
 #define CPARTY_SCFG2_BEAM_WMBW_RETAINED_JOIN_AGENDA_HH
 
+#include "scfg2/beam/column_store.hh"
+
 #include "scfg2/deductions/generate_exact_basic.hh"
 
 #include <algorithm>
@@ -23,7 +25,7 @@ class WmbwRetainedJoinAgenda {
                     WiStartsFn &&wi_starts,
                     WmbpStartsFn &&wmbp_starts) {
     column_ = j;
-    deductions_by_parent_.clear();
+    deductions_by_parent_.reset_column(j);
     parents_.clear();
     for (const cand_pos_t wi_i : wi_starts(j)) {
       const cand_pos_t wmbp_j = wi_i - 1;
@@ -82,10 +84,7 @@ class WmbwRetainedJoinAgenda {
  private:
   cand_pos_t column_ = -1;
   WmbwRetainedJoinAgendaStats stats_{};
-  std::unordered_map<deductions::ItemKey,
-                     std::vector<deductions::Deduction>,
-                     deductions::ItemKeyHash,
-                     deductions::ItemKeyEq>
+  ColumnStore<std::vector<deductions::Deduction>, grammar::NonTerminal::WMBW, 8>
       deductions_by_parent_;
   std::vector<deductions::ItemKey> parents_;
 };

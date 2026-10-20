@@ -63,6 +63,14 @@ Each parent sorts and clears only its touched words, never the entire
 sequence-sized bit set. Raw proposal counts and their O(b) budget are
 checked before deduplication, preserving the stated beam bounds.
 
+Current-column private agendas add O(n) start-indexed metadata and O(L)
+occupied-position records for L live parents. Metadata grows geometrically
+at column boundaries; resetting a column visits only its occupied entries
+and releases their values and source buffers. No historical source capacity
+is retained. Together with the existing current-column candidate budget,
+this remains within O(nb) space. Unsupported full keys and failed metadata
+allocation use the original sparse storage path.
+
 For standard forcing width beta = max(1000,b) and pilot width p = ceil(b^q),
 q in {1/2,2/3}, the sequential phase budgets are
 

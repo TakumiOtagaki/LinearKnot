@@ -1,6 +1,8 @@
 #ifndef CPARTY_SCFG2_BEAM_VPR_RETAINED_AGENDA_HH
 #define CPARTY_SCFG2_BEAM_VPR_RETAINED_AGENDA_HH
 
+#include "scfg2/beam/column_store.hh"
+
 #include "scfg2/weights/local_weight.hh"
 
 #include "scfg2/beam/run_term_observer.hh"
@@ -38,8 +40,8 @@ class VprRetainedAgenda {
                     std::size_t width) {
     const bool follows_previous_column = column_ == j - 1;
     column_ = j;
-    deductions_by_parent_.clear();
-    base_contribution_by_parent_.clear();
+    deductions_by_parent_.reset_column(j);
+    base_contribution_by_parent_.reset_column(j);
     parents_.clear();
 
     std::unordered_map<cand_pos_t, VprBasePrefixCell<Value>> candidates;
@@ -205,11 +207,9 @@ class VprRetainedAgenda {
   cand_pos_t column_ = -1;
   VprRetainedAgendaStats stats_{};
   std::unordered_map<cand_pos_t, VprBasePrefixCell<Value>> base_states_;
-  std::unordered_map<deductions::ItemKey, std::vector<deductions::Deduction>,
-                     deductions::ItemKeyHash, deductions::ItemKeyEq>
+  ColumnStore<std::vector<deductions::Deduction>, grammar::NonTerminal::VPR, 8>
       deductions_by_parent_;
-  std::unordered_map<deductions::ItemKey, Value,
-                     deductions::ItemKeyHash, deductions::ItemKeyEq>
+  ColumnStore<Value, grammar::NonTerminal::VPR>
       base_contribution_by_parent_;
   std::vector<deductions::ItemKey> parents_;
 };

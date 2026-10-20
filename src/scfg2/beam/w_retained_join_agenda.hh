@@ -1,6 +1,8 @@
 #ifndef CPARTY_SCFG2_BEAM_W_RETAINED_JOIN_AGENDA_HH
 #define CPARTY_SCFG2_BEAM_W_RETAINED_JOIN_AGENDA_HH
 
+#include "scfg2/beam/column_store.hh"
+
 #include "scfg2/deductions/generate_exact_basic.hh"
 
 #include <algorithm>
@@ -34,7 +36,7 @@ class WRetainedJoinAgenda {
   void build_column(cand_pos_t j, const Context &ctx,
                     RetainedStartsFn &&retained_starts, WmbContainsFn &&wmb_contains) {
     column_ = j;
-    deductions_by_parent_.clear();
+    deductions_by_parent_.reset_column(j);
     parents_.clear();
     const auto append_deduction = [&](const deductions::Deduction &deduction) {
       if (!deductions::is_valid(deduction)) return;
@@ -155,8 +157,7 @@ class WRetainedJoinAgenda {
  private:
   cand_pos_t column_ = -1;
   WRetainedJoinAgendaStats stats_{};
-  std::unordered_map<deductions::ItemKey, std::vector<deductions::Deduction>,
-                     deductions::ItemKeyHash, deductions::ItemKeyEq>
+  ColumnStore<std::vector<deductions::Deduction>, grammar::NonTerminal::W, 8>
       deductions_by_parent_;
   std::vector<deductions::ItemKey> parents_;
 };

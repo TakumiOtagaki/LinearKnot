@@ -3,10 +3,10 @@
 
 #include "scfg2/beam/wmbp_wi_prefix_store.hh"
 #include "scfg2/deductions/generate_exact_basic.hh"
+#include "scfg2/beam/column_store.hh"
 
 #include <algorithm>
 #include <cstddef>
-#include <unordered_map>
 #include <vector>
 
 namespace cparty::scfg2::beam {
@@ -27,7 +27,7 @@ class WmbpWiRetainedJoin {
     column_ = j;
     stats_ = {};
     parents_.clear();
-    deductions_by_parent_.clear();
+    deductions_by_parent_.reset_column(j);
     for (const cand_pos_t l : vp_starts) {
       const deductions::ItemKey direct_parent{
           grammar::NonTerminal::WMBP, l, j, -1, -1};
@@ -57,8 +57,10 @@ class WmbpWiRetainedJoin {
         }
       }
     }
-    for (auto &[parent, sources] : deductions_by_parent_) {
-      (void)parent;
+    // Sorting each parent's buffer is independent of the parent traversal
+    // order. parents_ lists each created entry once, before its final sort.
+    for (const auto &parent : parents_) {
+      auto &sources = deductions_by_parent_.find(parent)->second;
       std::sort(sources.begin(), sources.end(), [](const auto &lhs,
                                                    const auto &rhs) {
         if (lhs.rule != rhs.rule) {
@@ -97,10 +99,7 @@ class WmbpWiRetainedJoin {
 
   cand_pos_t column_ = -1;
   WmbpWiRetainedJoinStats stats_{};
-  std::unordered_map<deductions::ItemKey,
-                     std::vector<deductions::Deduction>,
-                     deductions::ItemKeyHash,
-                     deductions::ItemKeyEq>
+  ColumnStore<std::vector<deductions::Deduction>, grammar::NonTerminal::WMBP, 8>
       deductions_by_parent_;
   std::vector<deductions::ItemKey> parents_;
 };

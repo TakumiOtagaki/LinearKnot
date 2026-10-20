@@ -2,10 +2,10 @@
 #define CPARTY_SCFG2_BEAM_WI_RETAINED_JOIN_AGENDA_HH
 
 #include "scfg2/deductions/expand_basic.hh"
+#include "scfg2/beam/column_store.hh"
 
 #include <algorithm>
 #include <cstddef>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -24,7 +24,7 @@ class WiRetainedJoinAgenda {
                     const Context &ctx,
                     RetainedStartsFn &&retained_starts) {
     column_ = j;
-    deductions_by_parent_.clear();
+    deductions_by_parent_.reset_column(j);
     parents_.clear();
 
     const auto append = [&](const deductions::ItemKey &parent,
@@ -118,10 +118,9 @@ class WiRetainedJoinAgenda {
  private:
   cand_pos_t column_ = -1;
   WiRetainedJoinAgendaStats stats_{};
-  std::unordered_map<deductions::ItemKey,
-                     std::vector<deductions::Deduction>,
-                     deductions::ItemKeyHash,
-                     deductions::ItemKeyEq>
+  // Only canonical primary parents of this one column are authoritative.
+  // Source arrival order remains within each buffer; parents_ owns traversal.
+  ColumnStore<std::vector<deductions::Deduction>, grammar::NonTerminal::WI, 8>
       deductions_by_parent_;
   std::vector<deductions::ItemKey> parents_;
 };

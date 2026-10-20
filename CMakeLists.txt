@@ -346,6 +346,11 @@ if(BUILD_TESTING)
   add_test(NAME scfg2_primary_lookup_index COMMAND scfg2_primary_lookup_index_test)
   set_tests_properties(scfg2_primary_lookup_index PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 
+  add_executable(scfg2_column_store_test test/scfg2_column_store_test.cc)
+  target_link_libraries(scfg2_column_store_test PRIVATE LinearKnot::scfg2_exact)
+  add_test(NAME scfg2_column_store COMMAND scfg2_column_store_test)
+  set_tests_properties(scfg2_column_store PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
   add_executable(scfg2_numeric_primary_lookup_test test/scfg2_numeric_primary_lookup_test.cc)
   target_link_libraries(scfg2_numeric_primary_lookup_test PRIVATE LinearKnot::scfg2_exact)
   add_test(NAME scfg2_numeric_primary_lookup COMMAND scfg2_numeric_primary_lookup_test)

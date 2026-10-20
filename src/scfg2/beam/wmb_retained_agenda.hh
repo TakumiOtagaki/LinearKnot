@@ -1,6 +1,8 @@
 #ifndef CPARTY_SCFG2_BEAM_WMB_RETAINED_AGENDA_HH
 #define CPARTY_SCFG2_BEAM_WMB_RETAINED_AGENDA_HH
 
+#include "scfg2/beam/column_store.hh"
+
 #include "scfg2/weights/local_weight.hh"
 
 #include "scfg2/beam/wmb_btail_store.hh"
@@ -62,8 +64,8 @@ class WmbRetainedAgenda {
                     const std::vector<deductions::ItemKey> &be_items,
                     const WmbBtailStore<Semiring> &btails) {
     column_ = j;
-    deductions_by_parent_.clear();
-    split_contribution_by_parent_.clear();
+    deductions_by_parent_.reset_column(j);
+    split_contribution_by_parent_.reset_column(j);
     parents_.clear();
     const auto append = [&](const deductions::Deduction &deduction) {
       if (!deductions::is_valid(deduction)) return;
@@ -184,11 +186,9 @@ class WmbRetainedAgenda {
  private:
   cand_pos_t column_ = -1;
   WmbRetainedAgendaStats stats_{};
-  std::unordered_map<deductions::ItemKey, std::vector<deductions::Deduction>,
-                     deductions::ItemKeyHash, deductions::ItemKeyEq>
+  ColumnStore<std::vector<deductions::Deduction>, grammar::NonTerminal::WMB, 8>
       deductions_by_parent_;
-  std::unordered_map<deductions::ItemKey, Value,
-                     deductions::ItemKeyHash, deductions::ItemKeyEq>
+  ColumnStore<Value, grammar::NonTerminal::WMB>
       split_contribution_by_parent_;
   std::vector<deductions::ItemKey> parents_;
 };
