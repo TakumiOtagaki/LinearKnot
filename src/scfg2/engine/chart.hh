@@ -8,6 +8,7 @@
 #include <limits>
 #include <optional>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -58,7 +59,10 @@ class Chart {
 
   Value get(const key_type &key) const {
     if (const auto index = dense_index(key)) {
-      return dense_->present[*index] ? dense_->values[*index] : default_value_;
+      // Missing cells are initialized/reset to default_value_. Presence is
+      // needed for contains()/iteration, but reading it adds no information.
+      if constexpr (std::is_same_v<Value, double>) return dense_->values[*index];
+      else return dense_->present[*index] ? dense_->values[*index] : default_value_;
     }
     const auto it = values_.find(key);
     if (it == values_.end()) {

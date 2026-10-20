@@ -133,6 +133,14 @@ void check_diagnostics() {
   require(engine::runtime_child_item_for_support(direct, 0).nonterminal == NT::VP,
           "dependency check ignored canonical VP child");
   engine::require_legacy_span_schedule_support(direct);
+  d.child_count = d.children.size() + 1;
+  require(!engine::legacy_span_schedule_supports(d), "invalid child count passed observation predicate");
+  bool invalid_count = false;
+  try { engine::require_legacy_span_schedule_support(d); }
+  catch (const std::logic_error &e) {
+    invalid_count = std::string(e.what()).find("invalid child count") != std::string::npos;
+  }
+  require(invalid_count, "invalid child count diagnostic changed");
 }
 
 struct ZeroWeight {

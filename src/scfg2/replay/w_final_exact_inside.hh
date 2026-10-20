@@ -477,8 +477,115 @@ struct ExactExecutionOptions {
   bool dense_primary = false;
   bool skip_zero_children = false;
   bool omit_unused_vm = false;
+  // Also permits skipping admission-predicate calls on proved-zero branches.
+  // Enable only for a pure predicate and canonical numeric child products.
+  bool filter_zero_candidates = false;
 
-  static constexpr ExactExecutionOptions numeric() { return {true, true, true}; }
+  bool reuse_candidate_buffer = false;
+
+  static constexpr ExactExecutionOptions numeric() { return {true, true, true, true, true}; }
+};
+
+// Run-local reusable selections. Child identities come from the shared fixed
+// expansion, never from a second rule schema. The generator still owns
+// all geometric guards and final rule/split order.
+struct ExactNumericSplitScratch {
+  std::array<std::vector<cand_pos_t>, 16> selected;
+
+  deductions::ExactNumericSplitViews views() const {
+    return {&selected[0], &selected[1], &selected[2], &selected[3],
+            &selected[4], &selected[5], &selected[6], &selected[7], &selected[8],
+            &selected[9], &selected[10], &selected[11], &selected[12], &selected[13], &selected[14], &selected[15]};
+  }
+
+  static bool supports_item(grammar::NonTerminal nt) {
+    using N = grammar::NonTerminal;
+    return nt == N::WM || nt == N::VM || nt == N::WI || nt == N::WIP || nt == N::VPR || nt == N::WMBP;
+  }
+
+  template <class Semiring, grammar::RuleId Rule, class Chart>
+  static bool children_nonzero(const deductions::ItemKey &parent,
+                               cand_pos_t k, const Chart &chart) {
+    const auto d = deductions::expand_basic_rule<Rule>(parent, grammar::RuleSplit{k});
+    // Keep schedule diagnostics before reading any child, including on branches
+    // that will be omitted. The hot predicate can inline for the fixed rule;
+    // full diagnostic formatting remains on the failure path.
+    if (!engine::legacy_span_schedule_supports(d))
+      engine::require_legacy_span_schedule_support(d);
+    for (std::size_t c = 0; c < d.child_count; ++c)
+      if (Semiring::is_zero(chart.get(d.children[c].item))) return false;
+    return true;
+  }
+
+  template <class Semiring, class Chart, class Context>
+  void prepare(const deductions::ItemKey &parent, const Chart &chart, const Context &ctx) {
+    for (auto &s : selected) s.clear();
+    using R = grammar::RuleId;
+    if (parent.nonterminal == grammar::NonTerminal::WM) {
+      if (!deductions::exact_wm_split_parent_allows(parent)) return;
+      for (cand_pos_t k = parent.i; k <= parent.j; ++k) {
+        if (deductions::exact_wm_start_split_allows(parent, k, ctx)) {
+          if (children_nonzero<Semiring, R::WM_START_V>(parent, k, chart)) selected[0].push_back(k);
+          if (children_nonzero<Semiring, R::WM_START_WMB>(parent, k, chart)) selected[1].push_back(k);
+        }
+        if (k > parent.i) {
+          if (children_nonzero<Semiring, R::WM_SPLIT_V>(parent, k, chart)) selected[2].push_back(k);
+          if (children_nonzero<Semiring, R::WM_SPLIT_WMB>(parent, k, chart)) selected[3].push_back(k);
+        }
+      }
+    } else if (parent.nonterminal == grammar::NonTerminal::VM) {
+      for (cand_pos_t k = deductions::exact_vm_base_begin_k(parent);
+           k <= deductions::exact_vm_end_k(parent, ctx); ++k) {
+        if (k >= deductions::exact_vm_binary_begin_k(parent)) {
+          if (children_nonzero<Semiring, R::VM_SPLIT_WM_WMv>(parent, k, chart)) selected[4].push_back(k);
+          if (children_nonzero<Semiring, R::VM_SPLIT_WM_WMp>(parent, k, chart)) selected[5].push_back(k);
+        }
+        if (deductions::exact_vm_base_split_allows(parent, k, ctx) &&
+            children_nonzero<Semiring, R::VM_SPLIT_WMp_BASE>(parent, k, chart)) selected[6].push_back(k);
+      }
+    } else if (parent.nonterminal == grammar::NonTerminal::WI) {
+      if (!deductions::exact_round_weakly_closed_family_active(ctx, parent.i, parent.j)) return;
+      for (cand_pos_t k = parent.i; k <= parent.j - ctx.turn() - 1; ++k) {
+        if (ctx.can_pair(k, parent.j) &&
+            children_nonzero<Semiring, R::WI_SPLIT_V>(parent, k, chart)) selected[7].push_back(k);
+        if (children_nonzero<Semiring, R::WI_SPLIT_WMB>(parent, k, chart)) selected[8].push_back(k);
+      }
+    } else if (parent.nonterminal == grammar::NonTerminal::WIP) {
+      if (!deductions::exact_round_weakly_closed_family_active(ctx, parent.i, parent.j)) return;
+      for (cand_pos_t k = parent.i + 1; k <= parent.j - ctx.turn() - 1; ++k) {
+        if (children_nonzero<Semiring, R::WIP_SPLIT_V>(parent, k, chart)) selected[9].push_back(k);
+        if (children_nonzero<Semiring, R::WIP_SPLIT_WMB>(parent, k, chart)) selected[10].push_back(k);
+        if (deductions::exact_wip_start_split_allows(parent, k, ctx)) {
+          if (children_nonzero<Semiring, R::WIP_BASEPAIR_V>(parent, k, chart)) selected[11].push_back(k);
+          if (children_nonzero<Semiring, R::WIP_BASEPAIR_WMB>(parent, k, chart)) selected[12].push_back(k);
+        }
+      }
+    } else if (parent.nonterminal == grammar::NonTerminal::VPR) {
+      if (!deductions::exact_round_open_family_active(ctx, parent.i, parent.j) ||
+          !(ctx.pair_round(parent.j) < parent.j)) return;
+      const cand_pos_t boundary = std::max(ctx.border_B(parent.i, parent.j), ctx.border_bp(parent.i, parent.j));
+      for (cand_pos_t k = std::max(cand_pos_t(parent.i + 1), cand_pos_t(boundary + 1));
+           k < parent.j; ++k) {
+        if (children_nonzero<Semiring, R::VPR_SPLIT_VP_WIP>(parent, k, chart)) selected[13].push_back(k);
+        if (ctx.can_pair_right_span(k, parent.j) &&
+            children_nonzero<Semiring, R::VPR_SPLIT_VP_BASEPAIR>(parent, k, chart)) selected[14].push_back(k);
+      }
+    } else if (parent.nonterminal == grammar::NonTerminal::WMBP) {
+      if (!deductions::exact_wmbp_item_active(parent, ctx)) return;
+      for (cand_pos_t k = parent.i + 1; k < parent.j; ++k) {
+        const auto child = deductions::exact_wmbp_vp_child(parent, k);
+        if (!Semiring::is_zero(chart.get(child))) selected[15].push_back(k);
+      }
+    }
+  }
+};
+
+// A provider-owned buffer survives until the next item. The executor copies
+// this view, not its candidates; evaluation still follows complete generation.
+struct ExactDeductionBufferView {
+  const std::vector<deductions::Deduction> &buffer;
+  auto begin() const { return buffer.begin(); }
+  auto end() const { return buffer.end(); }
 };
 
 template <class Chart>
@@ -539,7 +646,13 @@ void update_w_final_exact_dp_item_with_provider_and_contribution(
     ContributionFn &contribution_for) {
   using value_type = typename Semiring::value_type;
   before_item_observer(item, chart);
-  const auto candidates = deduction_provider(item);
+  const auto candidates = [&] {
+    if constexpr (std::is_invocable_v<DeductionProviderFn &,
+        const deductions::ItemKey &>)
+      return deduction_provider(item);
+    else
+      return deduction_provider(item, std::as_const(chart));
+  }();
   value_type total = Semiring::zero();
   for (const auto &deduction : candidates) {
     engine::require_legacy_span_schedule_support(deduction);
@@ -630,22 +743,50 @@ run_w_final_exact_dp_schedule_with_item_observers_and_contribution(
     AfterItemObserverFn &&after_item_observer,
     ContributionFn &&contribution_for,
     cand_pos_t dense_length = 0,
-    bool omit_unused_vm = false) {
-  return run_w_final_exact_dp_schedule_with_provider_item_observers_and_contribution<
-      Semiring>(
-      schedule,
-      ctx,
-      [&](const deductions::ItemKey &item) {
-        if (omit_unused_vm && item.nonterminal == grammar::NonTerminal::VM &&
-            !deductions::exact_v_family_active(ctx, item.i, item.j))
-          return std::vector<deductions::Deduction>{};
-        return deductions::generate_exact_basic_deductions_for_item(item, ctx);
-      },
+    bool omit_unused_vm = false,
+    bool filter_zero_candidates = false,
+    bool reuse_candidate_buffer = false) {
+  ExactNumericSplitScratch scratch;
+  const auto generate = [&](const deductions::ItemKey &item, const auto &chart,
+                        std::vector<deductions::Deduction> &out) {
+    if (omit_unused_vm && item.nonterminal == grammar::NonTerminal::VM &&
+        !deductions::exact_v_family_active(ctx, item.i, item.j))
+      return;
+    if (filter_zero_candidates && ExactNumericSplitScratch::supports_item(item.nonterminal)) {
+      if constexpr (std::is_same_v<Semiring, semirings::LogSumExpSemiring> ||
+                    std::is_same_v<Semiring, semirings::LogMaxSemiring>) {
+        scratch.prepare<Semiring>(item, chart, ctx);
+        const auto views = scratch.views();
+        deductions::append_exact_basic_deductions_for_item(out, item, ctx, nullptr, &views);
+        return;
+      } else {
+        throw std::invalid_argument("zero-candidate selection requires a numeric log semiring");
+      }
+    }
+    deductions::append_exact_basic_deductions_for_item(out, item, ctx);
+  };
+  const auto run = [&](auto &&provider) {
+    return run_w_final_exact_dp_schedule_with_provider_item_observers_and_contribution<Semiring>(
+      schedule, ctx, provider,
       std::forward<DeductionAllowsFn>(deduction_allows),
       std::forward<CandidateObserverFn>(candidate_observer),
       std::forward<BeforeItemObserverFn>(before_item_observer),
       std::forward<AfterItemObserverFn>(after_item_observer),
       std::forward<ContributionFn>(contribution_for), dense_length);
+  };
+  if (reuse_candidate_buffer) {
+    std::vector<deductions::Deduction> buffer;
+    return run([&](const deductions::ItemKey &item, const auto &chart) {
+      buffer.clear();
+      generate(item, chart, buffer);
+      return ExactDeductionBufferView{buffer};
+    });
+  }
+  return run([&](const deductions::ItemKey &item, const auto &chart) {
+    std::vector<deductions::Deduction> out;
+    generate(item, chart, out);
+    return out;
+  });
 }
 
 template <class Semiring,
@@ -721,10 +862,12 @@ engine::Chart<typename Semiring::value_type> run_w_final_exact_dp_schedule(
           std::forward<CandidateObserverFn>(candidate_observer),
           [](const auto &, const auto &) {}, [](const auto &, const auto &) {},
           RuntimeProductContribution<Semiring, true>{},
-          options.dense_primary ? ctx.sequence_length() : 0, options.omit_unused_vm);
+          options.dense_primary ? ctx.sequence_length() : 0, options.omit_unused_vm,
+          options.filter_zero_candidates, options.reuse_candidate_buffer);
     }
   } else {
-    if (options.skip_zero_children || options.omit_unused_vm || options.dense_primary)
+    if (options.skip_zero_children || options.omit_unused_vm || options.dense_primary ||
+        options.filter_zero_candidates || options.reuse_candidate_buffer)
       throw std::invalid_argument("numeric exact execution requires a numeric log semiring");
   }
   return run_w_final_exact_dp_schedule_with_item_observers_and_contribution<Semiring>(
@@ -734,7 +877,8 @@ engine::Chart<typename Semiring::value_type> run_w_final_exact_dp_schedule(
       std::forward<CandidateObserverFn>(candidate_observer),
       [](const auto &, const auto &) {}, [](const auto &, const auto &) {},
       RuntimeProductContribution<Semiring>{},
-      options.dense_primary ? ctx.sequence_length() : 0, options.omit_unused_vm);
+      options.dense_primary ? ctx.sequence_length() : 0, options.omit_unused_vm,
+      options.filter_zero_candidates, options.reuse_candidate_buffer);
 }
 
 template <class Semiring = semirings::SumProductSemiring>

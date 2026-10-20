@@ -34,11 +34,15 @@ sampling or BPP are not interchangeable semantic references for inside.
 
 - [Numeric exact execution](../test/scfg2_exact_numeric_execution_test.cc)
   compares reference execution with dense storage, zero-child cutoff and
-  unused-VM omission, separately and together, under both closure policies.
+  unused-VM omission, split selection and candidate-buffer reuse, separately
+  and together, under both closure policies.
   It checks state bits, Viterbi choices/ties, outside adjoints, chart presence
   and checkpoint boundaries. A zero-child witness retains its nonzero
   outside derivative; reference observations and custom products retain
-  their original contract.
+  their original contract. Ordered deduction fingerprints are frozen from
+  the preceding implementation, including inactive child fields and WMBP
+  rule-block order. Selected split streams also match filtering the actual
+  expanded children, including finite log masses of `-1e300`.
 - [Shared BE/WMBP availability](../test/scfg2_wmbp_be_availability_test.cc)
   checks the no-overlap boundary against patched-legacy inside/marker values
   and exact/saturated-beam outside.

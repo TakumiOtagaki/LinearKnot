@@ -47,6 +47,7 @@ inline deductions::ItemKey runtime_child_item_for_support(
 
 inline bool legacy_span_schedule_supports(
     const deductions::Deduction &deduction) {
+  if (deduction.child_count > deduction.children.size()) return false;
   const auto parent_rank = legacy_span_schedule_rank(deduction.parent);
   for (std::size_t child_idx = 0;
        child_idx < deduction.child_count;
@@ -64,7 +65,8 @@ inline bool legacy_span_schedule_supports(
 // admission policy or an observation of the actual executor's commit order.
 // Keep the boolean predicate above for audits. Runtime consumers must report
 // a generator/order bug instead of silently deleting its contribution.
-inline void require_legacy_span_schedule_support(
+// Keep allocation-heavy diagnostic formatting off the valid-edge hot path.
+[[gnu::cold, gnu::noinline]] inline void report_legacy_span_schedule_violation(
     const deductions::Deduction &deduction) {
   if (deduction.child_count > deduction.children.size()) {
     throw std::logic_error("internal scfg2 schedule invariant: invalid child count");
@@ -92,6 +94,12 @@ inline void require_legacy_span_schedule_support(
         ",q=" + std::to_string(deduction.split.q) +
         "); expected runtime child rank < parent rank");
   }
+}
+
+inline void require_legacy_span_schedule_support(
+    const deductions::Deduction &deduction) {
+  if (!legacy_span_schedule_supports(deduction))
+    report_legacy_span_schedule_violation(deduction);
 }
 
 }  // namespace cparty::scfg2::engine

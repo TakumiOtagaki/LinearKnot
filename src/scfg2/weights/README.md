@@ -65,7 +65,11 @@ Numeric exact forward execution may skip this pure local-weight lookup when
 a canonical child is exactly semiring zero. It preserves the local factor
 and multiplication order for every live product; finite log weights are
 never thresholded. Reference execution still evaluates zero-child candidates
-for observation. Reverse propagation evaluates the shared local weight even
+for observation. Numeric split selection may omit such candidates before
+construction, including their pure admission-predicate calls. It uses the
+shared child identities and preserves the order of surviving alternatives;
+candidate-buffer reuse does not interleave generation and evaluation.
+Reverse propagation evaluates the shared local weight even
 when the inside product is zero, since a child adjoint can remain nonzero.
 
 The bundled Vienna PF builder has one shared raw/log table builder.

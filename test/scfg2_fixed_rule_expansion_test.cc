@@ -1,10 +1,12 @@
 #include "scfg2/deductions/expand_basic.hh"
+#include "scfg2/deductions/generate_exact_basic.hh"
 
 #include <array>
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -134,11 +136,75 @@ std::size_t check_all_rules(std::index_sequence<Index...>) {
   return (check_rule<rules[Index]>() + ...);
 }
 
+// Compare the actual generator's complete ordered stream to the runtime
+// expansion oracle, including bounded split views and inactive child slots.
+std::size_t check_wm_split_streams() {
+  struct Context : deductions::PairabilityContext {
+    cand_pos_t turn() const override { return 3; }
+    cand_pos_t sequence_length() const override { return 32; }
+    bool can_pair(cand_pos_t, cand_pos_t) const override { return true; }
+    cand_pos_t unpaired_prefix(cand_pos_t pos) const override { return pos; }
+  } ctx;
+  const Deduction prefix = deductions::expand_basic_rule<RuleId::V_HAIRPIN>(
+      ItemKey{NonTerminal::V, 1, 8, -1, -1}, RuleSplit{});
+  for (const auto rule : rules) {
+    const ItemKey parent{grammar::rule_spec(rule).parent, 1, 24, -1, -1};
+    const auto expected = deductions::generate_exact_basic_deductions(parent, rule, ctx);
+    std::vector<Deduction> buffer{prefix};
+    deductions::append_exact_basic_deductions(buffer, parent, rule, ctx);
+    if (buffer.size() != expected.size() + 1 || !same_deduction(buffer.front(), prefix)) {
+      std::cerr << "append lost existing candidate prefix\n";
+      std::exit(EXIT_FAILURE);
+    }
+    for (std::size_t c = 0; c < expected.size(); ++c) {
+      if (!same_deduction(buffer[c + 1], expected[c])) {
+        std::cerr << "append changed single-rule stream\n";
+        std::exit(EXIT_FAILURE);
+      }
+    }
+  }
+  const std::vector<cand_pos_t> selected{1, 3, 4, 7, 8, 12, 18, 32};
+  const std::vector<cand_pos_t> empty;
+  std::size_t checks = 0;
+  for (const auto rule : {RuleId::WM_SPLIT_V, RuleId::WM_SPLIT_WMB}) {
+    for (int i = 0; i <= 18; ++i) {
+      for (int j = i; j <= 32; ++j) {
+        const ItemKey parent{NonTerminal::WM, i, j, -1, -1};
+        for (const auto *view : {static_cast<const std::vector<cand_pos_t> *>(nullptr),
+                                &selected, &empty}) {
+          std::vector<Deduction> expected;
+          if (deductions::exact_wm_split_parent_allows(parent)) {
+            for (int k = i + 1; k <= j; ++k) {
+              if (view && !std::binary_search(view->begin(), view->end(), k)) continue;
+              const auto ded = deductions::expand_basic_rule(parent, rule, RuleSplit{k});
+              if (deductions::is_valid(ded)) expected.push_back(ded);
+            }
+          }
+          const auto generated = deductions::generate_exact_basic_deductions(parent, rule, ctx, view);
+          if (expected.size() != generated.size()) {
+            std::cerr << "WM split candidate count changed\n";
+            std::exit(EXIT_FAILURE);
+          }
+          for (std::size_t c = 0; c < generated.size(); ++c) {
+            if (!same_deduction(expected[c], generated[c])) {
+              std::cerr << "WM split candidate fields/order changed\n";
+              std::exit(EXIT_FAILURE);
+            }
+            ++checks;
+          }
+        }
+      }
+    }
+  }
+  return checks;
+}
+
 }  // namespace
 
 int main() {
   const auto checks = check_all_rules(std::make_index_sequence<rules.size()>{});
+  const auto streams = check_wm_split_streams();
   std::cout << "scfg2_fixed_rule_expansion=ok rules=" << rules.size()
-            << " checks=" << checks << '\n';
+            << " checks=" << checks << " generated_candidates=" << streams << '\n';
   return EXIT_SUCCESS;
 }

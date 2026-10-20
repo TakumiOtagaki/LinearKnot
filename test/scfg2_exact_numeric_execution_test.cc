@@ -1,6 +1,7 @@
 #include "scfg2/replay/w_final_exact_outside.hh"
 
 #include <cstring>
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <random>
@@ -118,6 +119,12 @@ void product_contract() {
   auto custom = [](const auto &, const auto &, auto) { return 17.0; };
   update(custom);
   require(chart.get(parent) == 17.0 && observations == 2, "custom product short-circuited");
+  auto optional_provider = [&](const Key &, const auto &...extra) {
+    require(sizeof...(extra) == 0, "legacy variadic provider received an extra chart argument");
+    return std::vector<D>{d};
+  };
+  replay::update_w_final_exact_dp_item_with_provider_and_contribution<S>(
+      parent, chart, weight, optional_provider, allows, observe, before_item, after_item, reference);
   chart.set(d.children[0].item, 1e16);
   chart.set(d.children[1].item, -1e16);
   chart.set(d.children[2].item, 1e-16);
@@ -165,6 +172,120 @@ void product_contract() {
       S::is_zero(outside.get(d.children[1].item)), "zero-child adjoint was lost");
 }
 
+void selected_numeric_streams(WmbClosurePolicy policy) {
+  std::string seq(40, 'G'), g(40, '.');
+  for (std::size_t i = 0; i < seq.size(); ++i) seq[i] = "GCAU"[i % 4];
+  g[0] = '('; g[7] = ')';
+  weights::RuntimeSnapshot owner(seq, g);
+  replay::WFinalLogWeightContext ctx(owner, policy);
+  engine::Chart<double> chart(S::zero(), nullptr, 40);
+  std::mt19937 rng(20261021);
+  for (const auto nt : {NT::V, NT::WMB, NT::WM, NT::WMv, NT::WMp, NT::WI, NT::WIP, NT::VP, NT::BE, NT::WMBP, NT::WMBW})
+    for (int j = 1; j <= 40; ++j)
+      for (int i = 1; i <= j; ++i)
+        if (rng() % 3 == 0) chart.set({nt, i, j, -1, -1}, -double(rng() % 100));
+  // A finite but arbitrarily small mass is not a zero. The following slots
+  // also distinguish START from SPLIT and VM BASE from a binary left prefix.
+  chart.set({NT::V, 10, 35, -1, -1}, -1e300);
+  chart.set({NT::WMp, 11, 34, -1, -1}, -1e300);
+  chart.set({NT::VP, 2, 35, -1, -1}, 0.0);
+  chart.set({NT::VP, 3, 35, -1, -1}, S::zero());
+  replay::ExactNumericSplitScratch scratch;
+  std::size_t kept = 0, omitted = 0;
+  std::array<std::size_t, 3> wmbp_kept{}, wmbp_omitted{};
+  for (const auto nt : {NT::WM, NT::VM, NT::WI, NT::WIP, NT::VPR, NT::WMBP}) {
+    const auto kept_before = kept, omitted_before = omitted;
+    const int begin = nt == NT::WMBP ? 1 : nt == NT::VPR ? 2 : 9;
+    for (int i = begin; i < begin + 6; ++i) {
+      const Key parent{nt, i, 35, -1, -1};
+      const auto reference = deductions::generate_exact_basic_deductions_for_item(parent, ctx);
+      scratch.prepare<S>(parent, chart, ctx);
+      const auto views = scratch.views();
+      std::vector<D> expected;
+      for (const auto &d : reference) {
+        if (nt == NT::WMBP && views.for_rule(d.rule, nullptr)) {
+          std::size_t vp_children = 0;
+          for (std::size_t c = 0; c < d.child_count; ++c) {
+            const auto &child = d.children[c].item;
+            if (child.nonterminal != NT::VP) continue;
+            ++vp_children;
+            require(equal(child, deductions::exact_wmbp_vp_child(parent,
+                d.rule == grammar::RuleId::WMBP_SPLIT_BE_WI_VP ? d.split.p : d.split.k)) &&
+                child.i > parent.i, "WMBP VP-child selection contract changed");
+          }
+          require(vp_children == 1, "WMBP family lost its unique VP child");
+        }
+        bool live = true;
+        if (views.for_rule(d.rule, nullptr))
+          for (std::size_t c = 0; c < d.child_count; ++c)
+            if (nt != NT::WMBP || d.children[c].item.nonterminal == NT::VP)
+              live &= !S::is_zero(chart.get(d.children[c].item));
+        if (nt == NT::WMBP && views.for_rule(d.rule, nullptr)) {
+          const std::size_t family = d.rule == grammar::RuleId::WMBP_SPLIT_BE_WMBP_VP ? 0 :
+              d.rule == grammar::RuleId::WMBP_SPLIT_BE_WMBW_VP ? 1 : 2;
+          ++(live ? wmbp_kept : wmbp_omitted)[family];
+        }
+        if (live) expected.push_back(d); else ++omitted;
+      }
+      const auto selected = deductions::generate_exact_basic_deductions_for_item(parent, ctx, nullptr, &views);
+      require(selected.size() == expected.size(), "numeric split selection count changed");
+      for (std::size_t c = 0; c < expected.size(); ++c) {
+        require(equal(expected[c], selected[c]), "numeric selected child fields/order changed");
+        ++kept;
+      }
+    }
+    require(kept > kept_before && omitted > omitted_before,
+        "numeric split witness missed live/dead alternatives in a selected family");
+  }
+  for (std::size_t family = 0; family < wmbp_kept.size(); ++family)
+    require(wmbp_kept[family] && wmbp_omitted[family],
+        "WMBP selection witness missed a live/dead shared or WI rule block");
+  require(kept > 0 && omitted > 0, "numeric split selection witness has no live/dead branches");
+  const Key wm{NT::WM, 10, 35, -1, -1}, vm{NT::VM, 10, 35, -1, -1};
+  scratch.prepare<S>(wm, chart, ctx);
+  require(std::find(scratch.selected[0].begin(), scratch.selected[0].end(), 10) != scratch.selected[0].end(),
+      "finite tiny V mass omitted from START");
+  scratch.prepare<S>(vm, chart, ctx);
+  require(std::find(scratch.selected[6].begin(), scratch.selected[6].end(), 11) != scratch.selected[6].end(),
+      "finite tiny WMp mass omitted from BASE");
+  require(std::find(scratch.selected[4].begin(), scratch.selected[4].end(), 11) == scratch.selected[4].end(),
+      "empty VM binary prefix reopened");
+}
+
+void ordered_generator_reference() {
+  const std::string seq = "GCAUGCAUGCAUGCAUGCAUGCAUGCAUGCAUGCAUGCAU";
+  const std::string g = "(......)................................";
+  for (const auto policy : {WmbClosurePolicy::LegacyCompatible, WmbClosurePolicy::RequireWeakClosure}) {
+    weights::RuntimeSnapshot owner(seq, g);
+    replay::WFinalLogWeightContext ctx(owner, policy);
+    const auto schedule = engine::build_pkfree_basic_exact_schedule(seq.size(), ctx);
+    std::uint64_t hash = 14695981039346656037ull;
+    const auto add = [&](auto value) { hash = (hash ^ std::uint64_t(value)) * 1099511628211ull; };
+    const auto key = [&](const Key &k) { add(k.nonterminal); add(k.i); add(k.j); add(k.ip); add(k.jp); };
+    std::size_t count = 0, singleton = 0, shared = 0, wi = 0;
+    for (const auto &parent : schedule) {
+      key(parent);
+      const auto buffered = deductions::generate_exact_basic_deductions_for_item(parent, ctx);
+      for (const D &d : buffered) {
+        ++count; key(d.parent); add(d.rule); add(d.split.k); add(d.split.l); add(d.split.p); add(d.split.q);
+        add(d.child_count);
+        for (const auto &child : d.children) key(child.item);
+        singleton += parent.nonterminal == NT::W && parent.i == parent.j;
+        shared += d.rule == grammar::RuleId::WMBP_SPLIT_BE_WMBP_VP ||
+                  d.rule == grammar::RuleId::WMBP_SPLIT_BE_WMBW_VP;
+        wi += d.rule == grammar::RuleId::WMBP_SPLIT_BE_WI_VP;
+      }
+    }
+    // Frozen from a272d73, before item generation used the shared append
+    // body. This detects changes in the complete rule/block/field order.
+    const bool legacy = policy == WmbClosurePolicy::LegacyCompatible;
+    require(count == (legacy ? 120285u : 119913u) &&
+        hash == (legacy ? 0xdce54ca6063761aeull : 0x29d3540a4c09a458ull),
+        "ordered deduction fingerprint differs from frozen reference");
+    require(singleton && shared && wi, "stream witness missed singleton or shared/wi rule blocks");
+  }
+}
+
 void check(std::string seq, std::string g, WmbClosurePolicy policy) {
   weights::RuntimeSnapshot owner(seq, g);
   replay::WFinalLogWeightContext ctx(owner, policy);
@@ -188,7 +309,8 @@ void check(std::string seq, std::string g, WmbClosurePolicy policy) {
               "VM gained a consumer outside V_VM: re-audit omission policy");
   }
   for (const Options options : {Options{true, false, false}, Options{false, true, false},
-           Options{false, false, true}, Options::numeric()}) {
+           Options{false, false, true}, Options{false, false, false, true},
+           Options{false, false, false, false, true}, Options::numeric()}) {
     const auto chart = replay::run_w_final_exact_dp_schedule<S>(schedule, ctx, allows, ignore, options);
     const auto maximum = replay::run_w_final_exact_viterbi_schedule_with_context<semirings::LogMaxSemiring>(
         schedule, ctx, allows, options);
@@ -216,7 +338,9 @@ void check(std::string seq, std::string g, WmbClosurePolicy policy) {
 
 int main() {
   setenv("CPARTY_FIXED_ENERGY_PARAM_FILE", "params/rna_Turner04.par", 1);
-  storage_contract(); product_contract();
+  storage_contract(); product_contract(); ordered_generator_reference();
+  for (const auto policy : {WmbClosurePolicy::RequireWeakClosure, WmbClosurePolicy::LegacyCompatible})
+    selected_numeric_streams(policy);
   std::vector<std::pair<std::string, std::string>> cases{
       {"GGGGGAACCAACCC", "((.....))....."},
       {"UUAUAUGGGUAUUAUUCUCA", "((....))((...))(...)"},

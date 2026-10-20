@@ -48,10 +48,17 @@ products retain local/child arithmetic order and candidate order. VM(i,j)
 is omitted only when the shared V admission predicate is false: its sole
 canonical consumer is V_VM at the same endpoints. These changes preserve
 all other state values and root results; unused VM entries become zero.
+WM, VM, WI, WIP and VPR split selections use the actual completed child
+values; WMBP selects nonzero VP starts before its geometry scan. These are
+ordered subsequences of the shared generator, with no finite-mass cutoff.
+Numeric runs reuse one candidate buffer while retaining complete generation
+before evaluation and the original order of rule blocks and alternatives.
 
 Internal exact runners default to the reference policy, preserving full
 VM values and zero-contribution observations. Numeric execution explicitly
-allows those observations to be omitted. Arithmetic-tape/factorized
+allows those observations to be omitted. The additional pre-generation
+selection option requires a pure admission predicate: calls on proved-zero
+branches may be omitted as well. Arithmetic-tape/factorized
 consumers, raw carrier observations and finite-beam retention keep their
 existing execution policy. Regenerated outside never applies the forward
 zero-product shortcut: a zero child can still receive a nonzero adjoint.
