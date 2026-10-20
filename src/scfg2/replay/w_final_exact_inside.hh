@@ -518,12 +518,123 @@ struct ExactNumericSplitScratch {
   }
 
   template <class Semiring, class Chart, class Context>
+  static bool standard_live_index(const deductions::ItemKey &parent,
+                                   const Chart &chart, const Context &ctx) {
+    if constexpr (std::is_same_v<std::decay_t<Chart>, engine::Chart<double>> &&
+                  std::is_same_v<std::decay_t<Context>, WFinalLogWeightContext> &&
+                  (std::is_same_v<Semiring, semirings::LogSumExpSemiring> ||
+                   std::is_same_v<Semiring, semirings::LogMaxSemiring>)) {
+      const auto n = chart.live_primary_index_length();
+      return n && parent.ip == -1 && parent.jp == -1 && parent.i >= 1 &&
+             parent.i <= parent.j && parent.j <= n && ctx.turn() >= 0;
+    } else {
+      return false;
+    }
+  }
+
+  // Infer the required right child's row and split-coordinate offset from
+  // shared expansion. Every indexed split still executes the complete shared
+  // expansion and schedule check in children_nonzero. Unsupported contexts,
+  // charts, parent keys and child shapes retain the old full-range scan.
+  // For these fixed rules on canonical spans, every omitted dependency also
+  // precedes its parent: WM's equal-span V/WMB children have earlier phases;
+  // WI/WIP exclude their last endpoint; VM's children are inside (i,j).
+  // The left child, when present, is strictly shorter as well. The endpoint
+  // checks below retain fallback if the shared schema changes that premise.
+  template <class Semiring, grammar::RuleId First, grammar::RuleId Second,
+            class Chart, class Context, class Fn>
+  static void for_each_right_live_start(const deductions::ItemKey &parent,
+                                        const Chart &chart, const Context &ctx,
+                                        cand_pos_t begin, cand_pos_t end, Fn &&fn) {
+    if (begin > end) return;
+    if constexpr (std::is_same_v<std::decay_t<Chart>, engine::Chart<double>>) {
+      if (standard_live_index<Semiring>(parent, chart, ctx) &&
+          begin >= parent.i && end <= parent.j) {
+        const auto left_begin = deductions::expand_basic_rule<First>(parent, grammar::RuleSplit{begin});
+        const auto left_end = deductions::expand_basic_rule<First>(parent, grammar::RuleSplit{end});
+        const auto right_begin = deductions::expand_basic_rule<Second>(parent, grammar::RuleSplit{begin});
+        const auto right_end = deductions::expand_basic_rule<Second>(parent, grammar::RuleSplit{end});
+        if (left_begin.child_count && left_end.child_count &&
+            right_begin.child_count && right_end.child_count &&
+            engine::legacy_span_schedule_supports(left_begin) &&
+            engine::legacy_span_schedule_supports(left_end) &&
+            engine::legacy_span_schedule_supports(right_begin) &&
+            engine::legacy_span_schedule_supports(right_end)) {
+          const auto &a = left_begin.children[left_begin.child_count - 1].item;
+          const auto &b = left_end.children[left_end.child_count - 1].item;
+          const auto &c = right_begin.children[right_begin.child_count - 1].item;
+          const auto &d = right_end.children[right_end.child_count - 1].item;
+          const auto offset = a.i - begin;
+          if (a.ip == -1 && a.jp == -1 && b.ip == -1 && b.jp == -1 &&
+              c.ip == -1 && c.jp == -1 && d.ip == -1 && d.jp == -1 &&
+              a.nonterminal == b.nonterminal && a.j == b.j &&
+              c.nonterminal == d.nonterminal && c.j == d.j &&
+              b.i - end == offset && c.i - begin == offset && d.i - end == offset &&
+              chart.for_each_live_primary_start_union(a.nonterminal, a.j,
+                  c.nonterminal, c.j, begin + offset, end + offset,
+                  [&](cand_pos_t start) { fn(start - offset); })) return;
+        }
+      }
+    }
+    for (cand_pos_t k = begin; k <= end; ++k) fn(k);
+  }
+
+  template <class Semiring, grammar::RuleId Rule, class Chart, class Context, class Fn>
+  static void for_each_left_live_end(const deductions::ItemKey &parent,
+                                     const Chart &chart, const Context &ctx,
+                                     cand_pos_t begin, cand_pos_t end, Fn &&fn) {
+    if (begin > end) return;
+    if constexpr (std::is_same_v<std::decay_t<Chart>, engine::Chart<double>>) {
+      if (standard_live_index<Semiring>(parent, chart, ctx) &&
+          begin > parent.i && end < parent.j) {
+        const auto first = deductions::expand_basic_rule<Rule>(parent, grammar::RuleSplit{begin});
+        const auto last = deductions::expand_basic_rule<Rule>(parent, grammar::RuleSplit{end});
+        if (first.child_count && last.child_count &&
+            engine::legacy_span_schedule_supports(first) &&
+            engine::legacy_span_schedule_supports(last)) {
+          const auto &a = first.children[0].item;
+          const auto &b = last.children[0].item;
+          const auto offset = a.j - begin;
+          if (a.ip == -1 && a.jp == -1 && b.ip == -1 && b.jp == -1 &&
+              a.nonterminal == b.nonterminal && a.i == b.i && b.j - end == offset &&
+              chart.for_each_live_primary_end(a.nonterminal, a.i,
+                  begin + offset, end + offset,
+                  [&](cand_pos_t finish) { fn(finish - offset); })) return;
+        }
+      }
+    }
+    for (cand_pos_t k = begin; k <= end; ++k) fn(k);
+  }
+
+  template <class Semiring, class Chart, class Context, class Fn>
+  static void for_each_wmbp_live_start(const deductions::ItemKey &parent,
+                                       const Chart &chart, const Context &ctx,
+                                       cand_pos_t begin, cand_pos_t end, Fn &&fn) {
+    if (begin > end) return;
+    if constexpr (std::is_same_v<std::decay_t<Chart>, engine::Chart<double>>) {
+      if (standard_live_index<Semiring>(parent, chart, ctx) &&
+          begin > parent.i && end < parent.j) {
+        const auto a = deductions::exact_wmbp_vp_child(parent, begin);
+        const auto b = deductions::exact_wmbp_vp_child(parent, end);
+        const auto offset = a.i - begin;
+        if (a.ip == -1 && a.jp == -1 && b.ip == -1 && b.jp == -1 &&
+            a.nonterminal == b.nonterminal && a.j == b.j && b.i - end == offset &&
+            chart.for_each_live_primary_start_union(a.nonterminal, a.j,
+                a.nonterminal, a.j, begin + offset, end + offset,
+                [&](cand_pos_t start) { fn(start - offset); })) return;
+      }
+    }
+    for (cand_pos_t k = begin; k <= end; ++k) fn(k);
+  }
+
+  template <class Semiring, class Chart, class Context>
   void prepare(const deductions::ItemKey &parent, const Chart &chart, const Context &ctx) {
     for (auto &s : selected) s.clear();
     using R = grammar::RuleId;
     if (parent.nonterminal == grammar::NonTerminal::WM) {
       if (!deductions::exact_wm_split_parent_allows(parent)) return;
-      for (cand_pos_t k = parent.i; k <= parent.j; ++k) {
+      for_each_right_live_start<Semiring, R::WM_START_V, R::WM_START_WMB>(
+          parent, chart, ctx, parent.i, parent.j, [&](cand_pos_t k) {
         if (deductions::exact_wm_start_split_allows(parent, k, ctx)) {
           if (children_nonzero<Semiring, R::WM_START_V>(parent, k, chart)) selected[0].push_back(k);
           if (children_nonzero<Semiring, R::WM_START_WMB>(parent, k, chart)) selected[1].push_back(k);
@@ -532,50 +643,55 @@ struct ExactNumericSplitScratch {
           if (children_nonzero<Semiring, R::WM_SPLIT_V>(parent, k, chart)) selected[2].push_back(k);
           if (children_nonzero<Semiring, R::WM_SPLIT_WMB>(parent, k, chart)) selected[3].push_back(k);
         }
-      }
+      });
     } else if (parent.nonterminal == grammar::NonTerminal::VM) {
-      for (cand_pos_t k = deductions::exact_vm_base_begin_k(parent);
-           k <= deductions::exact_vm_end_k(parent, ctx); ++k) {
+      for_each_right_live_start<Semiring, R::VM_SPLIT_WM_WMv, R::VM_SPLIT_WMp_BASE>(
+          parent, chart, ctx, deductions::exact_vm_base_begin_k(parent),
+          deductions::exact_vm_end_k(parent, ctx), [&](cand_pos_t k) {
         if (k >= deductions::exact_vm_binary_begin_k(parent)) {
           if (children_nonzero<Semiring, R::VM_SPLIT_WM_WMv>(parent, k, chart)) selected[4].push_back(k);
           if (children_nonzero<Semiring, R::VM_SPLIT_WM_WMp>(parent, k, chart)) selected[5].push_back(k);
         }
         if (deductions::exact_vm_base_split_allows(parent, k, ctx) &&
             children_nonzero<Semiring, R::VM_SPLIT_WMp_BASE>(parent, k, chart)) selected[6].push_back(k);
-      }
+      });
     } else if (parent.nonterminal == grammar::NonTerminal::WI) {
       if (!deductions::exact_round_weakly_closed_family_active(ctx, parent.i, parent.j)) return;
-      for (cand_pos_t k = parent.i; k <= parent.j - ctx.turn() - 1; ++k) {
+      for_each_right_live_start<Semiring, R::WI_SPLIT_V, R::WI_SPLIT_WMB>(
+          parent, chart, ctx, parent.i, parent.j - ctx.turn() - 1, [&](cand_pos_t k) {
         if (ctx.can_pair(k, parent.j) &&
             children_nonzero<Semiring, R::WI_SPLIT_V>(parent, k, chart)) selected[7].push_back(k);
         if (children_nonzero<Semiring, R::WI_SPLIT_WMB>(parent, k, chart)) selected[8].push_back(k);
-      }
+      });
     } else if (parent.nonterminal == grammar::NonTerminal::WIP) {
       if (!deductions::exact_round_weakly_closed_family_active(ctx, parent.i, parent.j)) return;
-      for (cand_pos_t k = parent.i + 1; k <= parent.j - ctx.turn() - 1; ++k) {
+      for_each_right_live_start<Semiring, R::WIP_SPLIT_V, R::WIP_SPLIT_WMB>(
+          parent, chart, ctx, parent.i + 1, parent.j - ctx.turn() - 1, [&](cand_pos_t k) {
         if (children_nonzero<Semiring, R::WIP_SPLIT_V>(parent, k, chart)) selected[9].push_back(k);
         if (children_nonzero<Semiring, R::WIP_SPLIT_WMB>(parent, k, chart)) selected[10].push_back(k);
         if (deductions::exact_wip_start_split_allows(parent, k, ctx)) {
           if (children_nonzero<Semiring, R::WIP_BASEPAIR_V>(parent, k, chart)) selected[11].push_back(k);
           if (children_nonzero<Semiring, R::WIP_BASEPAIR_WMB>(parent, k, chart)) selected[12].push_back(k);
         }
-      }
+      });
     } else if (parent.nonterminal == grammar::NonTerminal::VPR) {
       if (!deductions::exact_round_open_family_active(ctx, parent.i, parent.j) ||
           !(ctx.pair_round(parent.j) < parent.j)) return;
       const cand_pos_t boundary = std::max(ctx.border_B(parent.i, parent.j), ctx.border_bp(parent.i, parent.j));
-      for (cand_pos_t k = std::max(cand_pos_t(parent.i + 1), cand_pos_t(boundary + 1));
-           k < parent.j; ++k) {
+      for_each_left_live_end<Semiring, R::VPR_SPLIT_VP_WIP>(parent, chart, ctx,
+          std::max(cand_pos_t(parent.i + 1), cand_pos_t(boundary + 1)),
+          parent.j - 1, [&](cand_pos_t k) {
         if (children_nonzero<Semiring, R::VPR_SPLIT_VP_WIP>(parent, k, chart)) selected[13].push_back(k);
         if (ctx.can_pair_right_span(k, parent.j) &&
             children_nonzero<Semiring, R::VPR_SPLIT_VP_BASEPAIR>(parent, k, chart)) selected[14].push_back(k);
-      }
+      });
     } else if (parent.nonterminal == grammar::NonTerminal::WMBP) {
       if (!deductions::exact_wmbp_item_active(parent, ctx)) return;
-      for (cand_pos_t k = parent.i + 1; k < parent.j; ++k) {
+      for_each_wmbp_live_start<Semiring>(parent, chart, ctx,
+          parent.i + 1, parent.j - 1, [&](cand_pos_t k) {
         const auto child = deductions::exact_wmbp_vp_child(parent, k);
         if (!Semiring::is_zero(chart.get(child))) selected[15].push_back(k);
-      }
+      });
     }
   }
 };

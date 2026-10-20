@@ -6,6 +6,7 @@
 #include "scfg2/semirings/value_boundary.hh"
 
 #include <unordered_map>
+#include <cstdint>
 #include <limits>
 #include <new>
 #include <optional>
@@ -88,6 +89,39 @@ class Chart {
   // Exact numeric runs opt into primary-span triangles. BE and noncanonical
   // keys keep their full sparse identity; default/beam charts remain sparse.
   cand_pos_t dense_length() const { return dense_ ? dense_->n : 0; }
+  // An exact-only observation index: a bit is set precisely when the dense
+  // primary value differs from logarithmic zero. Sparse/beam charts and
+  // non-log defaults allocate no rows and always request the caller's fallback.
+  cand_pos_t live_primary_index_length() const {
+    return dense_ && !dense_->live_starts.empty() ? dense_->n : 0;
+  }
+  std::size_t live_primary_index_bytes() const {
+    return dense_ ? (dense_->live_starts.capacity() + dense_->live_ends.capacity()) *
+                        sizeof(std::uint64_t) : 0;
+  }
+
+  template <class Fn>
+  bool for_each_live_primary_start_union(
+      grammar::NonTerminal first_family, cand_pos_t first_end,
+      grammar::NonTerminal second_family, cand_pos_t second_end,
+      cand_pos_t first, cand_pos_t last, Fn &&fn) const {
+    const auto *left = live_primary_row(first_family, first_end, false);
+    const auto *right = live_primary_row(second_family, second_end, false);
+    if (!left || !right || first < 1 || last > dense_->n) return false;
+    if (first > last) return true;
+    for_each_live_bit(left, right, first, last, std::forward<Fn>(fn));
+    return true;
+  }
+
+  template <class Fn>
+  bool for_each_live_primary_end(grammar::NonTerminal family, cand_pos_t start,
+                                 cand_pos_t first, cand_pos_t last, Fn &&fn) const {
+    const auto *row = live_primary_row(family, start, true);
+    if (!row || first < 1 || last > dense_->n) return false;
+    if (first > last) return true;
+    for_each_live_bit(row, row, first, last, std::forward<Fn>(fn));
+    return true;
+  }
   cand_pos_t primary_lookup_length() const { return primary_lookup_ ? primary_lookup_->length() : 0; }
   std::size_t primary_lookup_bytes() const { return primary_lookup_ ? primary_lookup_->memory_bytes() : 0; }
   std::size_t size() const { return values_.size() + (dense_ ? dense_->count : 0); }
@@ -118,6 +152,7 @@ class Chart {
         if (dense_->present[*index]) --dense_->count;
         dense_->present[*index] = false;
         dense_->values[*index] = default_value_;
+        dense_->set_live(key, default_value_);
       } else {
         values_.erase(key);
       }
@@ -131,6 +166,7 @@ class Chart {
         if (!dense_->present[*index]) ++dense_->count;
         dense_->present[*index] = true;
         dense_->values[*index] = value;
+        dense_->set_live(key, value);
       } else {
         values_[key] = value;
       }
@@ -206,6 +242,9 @@ class Chart {
     std::size_t stride;
     std::vector<Value> values;
     std::vector<unsigned char> present;
+    std::size_t live_words = 0;
+    std::vector<std::uint64_t> live_starts;
+    std::vector<std::uint64_t> live_ends;
     std::size_t count = 0;
     DensePrimary(cand_pos_t length, const Value &zero) : n(length), stride(0) {
       const auto extent = static_cast<std::size_t>(length);
@@ -217,8 +256,110 @@ class Chart {
         throw std::length_error("dense chart dimensions overflow");
       values.assign(primary_families * stride, zero);
       present.assign(primary_families * stride, false);
+      if constexpr (std::is_same_v<Value, double>) {
+        if (zero == -std::numeric_limits<double>::infinity()) {
+          live_words = (extent + 63) / 64;
+          if (extent > live_starts.max_size() / primary_families / live_words) {
+            live_words = 0;
+            return;
+          }
+          const auto cells = primary_families * extent * live_words;
+          try {
+            live_starts.assign(cells, 0);
+            live_ends.assign(cells, 0);
+          } catch (const std::bad_alloc &) {
+            disable_live_index();
+          } catch (const std::length_error &) {
+            disable_live_index();
+          }
+        }
+      }
+    }
+
+    DensePrimary(const DensePrimary &other)
+        : n(other.n), stride(other.stride), values(other.values),
+          present(other.present), count(other.count) {
+      // The dense cells/presence remain authoritative. An optional support
+      // copy must not make an otherwise successful chart copy fail.
+      if (!other.live_starts.empty()) {
+        try {
+          live_starts = other.live_starts;
+          live_ends = other.live_ends;
+          live_words = other.live_words;
+        } catch (const std::bad_alloc &) {
+          disable_live_index();
+        } catch (const std::length_error &) {
+          disable_live_index();
+        }
+      }
+    }
+    DensePrimary &operator=(const DensePrimary &other) {
+      if (this == &other) return *this;
+      DensePrimary copy(other);
+      *this = std::move(copy);
+      return *this;
+    }
+    DensePrimary(DensePrimary &&) = default;
+    DensePrimary &operator=(DensePrimary &&) = default;
+
+    void disable_live_index() {
+      std::vector<std::uint64_t>().swap(live_starts);
+      std::vector<std::uint64_t>().swap(live_ends);
+      live_words = 0;
+    }
+
+    void set_live(const key_type &key, const Value &value) {
+      if constexpr (std::is_same_v<Value, double>) {
+        if (live_starts.empty()) return;
+        const auto family = static_cast<std::size_t>(key.nonterminal);
+        const auto begin = static_cast<std::size_t>(key.i - 1);
+        const auto end = static_cast<std::size_t>(key.j - 1);
+        auto &start_word = live_starts[(family * n + end) * live_words + begin / 64];
+        auto &end_word = live_ends[(family * n + begin) * live_words + end / 64];
+        const std::uint64_t start_bit = std::uint64_t{1} << (begin % 64);
+        const std::uint64_t end_bit = std::uint64_t{1} << (end % 64);
+        // NaN, positive infinity and every finite number remain live, exactly
+        // as LogSumExp/LogMax::is_zero; this is never a finite cutoff.
+        if (value != -std::numeric_limits<double>::infinity()) {
+          start_word |= start_bit;
+          end_word |= end_bit;
+        } else {
+          start_word &= ~start_bit;
+          end_word &= ~end_bit;
+        }
+      }
     }
   };
+
+  const std::uint64_t *live_primary_row(grammar::NonTerminal nt,
+                                       cand_pos_t fixed, bool end_row) const {
+    const auto family = static_cast<std::size_t>(nt);
+    if (!dense_ || dense_->live_starts.empty() || family >= primary_families ||
+        fixed < 1 || fixed > dense_->n) return nullptr;
+    const auto offset = (family * static_cast<std::size_t>(dense_->n) + fixed - 1) *
+                        dense_->live_words;
+    return (end_row ? dense_->live_ends : dense_->live_starts).data() + offset;
+  }
+
+  template <class Fn>
+  static void for_each_live_bit(const std::uint64_t *left,
+                                const std::uint64_t *right,
+                                cand_pos_t first, cand_pos_t last, Fn &&fn) {
+    const auto first_bit = static_cast<std::size_t>(first - 1);
+    const auto last_bit = static_cast<std::size_t>(last - 1);
+    const auto first_word = first_bit / 64;
+    const auto last_word = last_bit / 64;
+    for (auto word = first_word; word <= last_word; ++word) {
+      auto bits = left[word] | right[word];
+      if (word == first_word) bits &= ~std::uint64_t{0} << (first_bit % 64);
+      if (word == last_word) bits &= ~std::uint64_t{0} >> (63 - last_bit % 64);
+      while (bits) {
+        const auto bit = static_cast<unsigned>(__builtin_ctzll(bits));
+        fn(static_cast<cand_pos_t>(word * 64 + bit + 1));
+        bits &= bits - 1;
+      }
+    }
+  }
 
   std::optional<std::size_t> dense_index(const key_type &key) const {
     const auto family = static_cast<std::size_t>(key.nonterminal);

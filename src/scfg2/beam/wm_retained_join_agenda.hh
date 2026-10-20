@@ -153,6 +153,15 @@ class WmRetainedJoinAgenda {
     return std::move(found->second);
   }
 
+  // Observe a private aggregate with one map probe. The source remains
+  // owned by this column; the pointer expires at the next build_column().
+  const Value *find_start_contribution(const deductions::Deduction &deduction) const {
+    if (deduction.rule != grammar::RuleId::WM_START_V &&
+        deduction.rule != grammar::RuleId::WM_START_WMB) return nullptr;
+    const auto found = start_contribution_by_parent_.find(deduction.parent);
+    return found == start_contribution_by_parent_.end() ? nullptr : &found->second;
+  }
+
   bool reconstructs_start(const deductions::Deduction &deduction) const {
     return (deduction.rule == grammar::RuleId::WM_START_V ||
             deduction.rule == grammar::RuleId::WM_START_WMB) &&

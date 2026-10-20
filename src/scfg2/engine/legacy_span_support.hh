@@ -48,15 +48,28 @@ inline deductions::ItemKey runtime_child_item_for_support(
 inline bool legacy_span_schedule_supports(
     const deductions::Deduction &deduction) {
   if (deduction.child_count > deduction.children.size()) return false;
-  const auto parent_rank = legacy_span_schedule_rank(deduction.parent);
+  const auto &parent = deduction.parent;
+  const auto parent_span = parent.j - parent.i + 1;
+  int parent_phase = -1;
   for (std::size_t child_idx = 0;
        child_idx < deduction.child_count;
        ++child_idx) {
-    if (!(legacy_span_schedule_rank(
-              runtime_child_item_for_support(deduction, child_idx)) <
-          parent_rank)) {
-      return false;
-    }
+    const auto child = runtime_child_item_for_support(deduction, child_idx);
+    const auto child_span = child.j - child.i + 1;
+    // The common shorter-span edge needs no phase/key comparison. The
+    // remaining branches are exactly the rank tuple's lexicographic order;
+    // equal ranks are still rejected, including on unknown nonterminals.
+    if (child_span < parent_span) continue;
+    if (child_span > parent_span) return false;
+    if (parent_phase < 0) parent_phase = legacy_span_phase(parent.nonterminal);
+    const int child_phase = legacy_span_phase(child.nonterminal);
+    if (child_phase < parent_phase) continue;
+    if (child_phase > parent_phase) return false;
+    if (child.i < parent.i) continue;
+    if (child.i > parent.i) return false;
+    if (child.ip < parent.ip) continue;
+    if (child.ip > parent.ip) return false;
+    if (child.jp >= parent.jp) return false;
   }
   return true;
 }

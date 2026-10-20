@@ -4,7 +4,10 @@
 
 #include "scfg2/beam/outer_frontier.hh"
 #include "scfg2/geometry/static_scaffold_geometry.hh"
+#include <cstdint>
 #include <memory>
+#include <new>
+#include <stdexcept>
 
 namespace cparty::scfg2::beam {
 namespace outer_detail {
@@ -20,6 +23,83 @@ struct Work {
   std::array<double, outer_probe_families> family_generation{}, family_propagation{};
 };
 struct Record { Item key; double alpha; };
+
+// Reusable position deduplication. Only words marked by this parent are sorted,
+// enumerated and reset; clearing a parent never scans the O(n)-sized metadata.
+class ProposalPositionBits {
+ public:
+  explicit ProposalPositionBits(int n)
+      : upper_(std::int64_t(n) + 1), word_extent_(word_count_for(n)) {}
+
+  bool enabled() const { return enabled_; }
+  std::size_t word_count() const { return words_.size(); }
+  std::size_t active_word_count() const { return touched_.size(); }
+  std::size_t touched_capacity() const { return touched_.capacity(); }
+
+  void sort_unique(std::vector<int> &positions) {
+    if (positions.size() < 2) return;
+    if (!enabled_) { reference_sort_unique(positions); return; }
+    // Validate before changing either positions or the bitset. Custom contexts
+    // may produce other sentinels; retain their original sort/unique behavior.
+    for (const int position : positions) {
+      if (position < -2 || std::int64_t(position) > upper_) {
+        reference_sort_unique(positions);
+        return;
+      }
+    }
+    // Allocate once, and reserve before marking, so allocation failure cannot
+    // leave dirty words. Distinct touched words <= min(word_extent, raw_count).
+    // This index is optional: allocation failure retains the original sorter.
+    try {
+      if (words_.empty()) words_.resize(word_extent_, 0);
+      touched_.reserve(std::min(words_.size(), positions.size()));
+    } catch (const std::bad_alloc &) {
+      disable(); reference_sort_unique(positions); return;
+    } catch (const std::length_error &) {
+      disable(); reference_sort_unique(positions); return;
+    }
+    for (const int position : positions) {
+      const auto shifted = static_cast<std::size_t>(std::int64_t(position) + 2);
+      const auto id = shifted / 64;
+      auto &word = words_[id];
+      if (!word) touched_.push_back(id);
+      word |= std::uint64_t{1} << (shifted % 64);
+    }
+    std::sort(touched_.begin(), touched_.end());
+    positions.clear();
+    // The original vector's capacity is sufficient: unique_count <= raw_count.
+    for (const auto id : touched_) {
+      auto bits = words_[id];
+      words_[id] = 0;
+      while (bits) {
+        const auto offset = static_cast<unsigned>(__builtin_ctzll(bits));
+        positions.push_back(static_cast<int>(std::int64_t(id * 64 + offset) - 2));
+        bits &= bits - 1;
+      }
+    }
+    touched_.clear();
+  }
+
+ private:
+  static void reference_sort_unique(std::vector<int> &positions) {
+    std::sort(positions.begin(), positions.end());
+    positions.erase(std::unique(positions.begin(), positions.end()), positions.end());
+  }
+  void disable() {
+    enabled_ = false;
+    std::vector<std::uint64_t>{}.swap(words_);
+    std::vector<std::size_t>{}.swap(touched_);
+  }
+  static std::size_t word_count_for(int n) {
+    if (n < 0) throw std::runtime_error("negative proposal position extent");
+    return (static_cast<std::size_t>(n) + 4 + 63) / 64;
+  }
+  std::int64_t upper_;
+  std::size_t word_extent_;
+  bool enabled_ = true;
+  std::vector<std::uint64_t> words_;
+  std::vector<std::size_t> touched_;
+};
 
 // The same constant-size undo design as probe_scfg2_vm_outer_budget.py.
 class PrefixTop {
@@ -84,11 +164,12 @@ class Proposals {
   std::vector<std::array<int, families>> best_left, best_right;
   std::unordered_map<std::size_t, std::unique_ptr<PrefixTop>> indices;
   sc::geometry::StaticScaffoldGeometry scaffold;
+  ProposalPositionBits position_bits;
 
   template <class Context>
   Proposals(const Chart &pilot, int n, std::size_t b, Context &ctx, Work &work)
       : n(n), b(b), work(work), right(n + 1), left(n + 1),
-        best_left(n + 1), best_right(n + 1) {
+        best_left(n + 1), best_right(n + 1), position_bits(n) {
     if (!b) throw std::runtime_error("zero proposal width");
     std::vector<int> partners(n + 1, -2);
     for (int p = 1; p <= n; ++p) {
@@ -257,8 +338,7 @@ class Proposals {
     work.proposals += out.size();
     work.max_proposals = std::max(work.max_proposals, out.size());
     if (out.size() > 64 * b + 32) throw std::runtime_error("per-parent proposal budget exceeded");
-    std::sort(out.begin(), out.end());
-    out.erase(std::unique(out.begin(), out.end()), out.end());
+    position_bits.sort_unique(out);
   }
   void check_budget() const {
     const auto q = 2 * b + 1;

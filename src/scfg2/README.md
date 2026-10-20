@@ -51,6 +51,12 @@ all other state values and root results; unused VM entries become zero.
 WM, VM, WI, WIP and VPR split selections use the actual completed child
 values; WMBP selects nonzero VP starts before its geometry scan. These are
 ordered subsequences of the shared generator, with no finite-mass cutoff.
+For the standard numeric context, dense charts also index nonzero primary
+starts and ends with bit rows. Split selection enumerates these rows in
+ascending coordinate order, then applies the shared expansion and complete
+child checks. Sparse charts, custom contexts and unsupported shapes retain
+the full split scan. The optional index falls back to that scan if its
+allocation fails; it does not change chart values or presence.
 Numeric runs reuse one candidate buffer while retaining complete generation
 before evaluation and the original order of rule blocks and alternatives.
 
@@ -78,8 +84,15 @@ ranking reads the immutable sorted alpha rows and uses an indexed heap for
 bounded maxima, reusing a deduction buffer between fully generated parents.
 Its canonical map mutation order, score/key cutoff, equal
 score predecessor rule and mandatory-state ownership remain unchanged.
+Proposal positions use a reusable bit set for ascending deduplication.
+Only touched words are sorted and reset; raw proposal budget checks precede
+deduplication, and unsupported positions or allocation failure use the
+original sort/unique path.
 These storage changes do not alter beam widths, geometry limits or retained
 states. The diagnostic sorted rank view is generated only when observed.
+Private aggregate reads dispatch by rule and use one lookup for admission
+and value retrieval. VP's first three rule blocks share one immutable
+geometry observation while preserving their original deduction order.
 
 The model, completed-WMB policy and decoding objectives are documented in
 [the model guide](../../documents/model.md). Resource assumptions and bounds

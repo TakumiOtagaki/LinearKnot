@@ -1,6 +1,7 @@
 #include "scfg2/beam/prepare_ranking.hh"
 #include "scfg2/weights/runtime_snapshot.hh"
 
+#include <array>
 #include <cmath>
 #include <cstring>
 #include <cstdlib>
@@ -26,6 +27,8 @@ using Observation = sc::beam::MemoryObservation;
 std::size_t cases = 0, compared_items = 0, compared_choices = 0;
 std::size_t retained_be = 0, retained_vp = 0, first_winner_ties = 0;
 std::size_t guide_cases = 0, guide_links = 0, guide_misses = 0;
+std::size_t contribution_queries = 0, compared_candidates = 0;
+std::array<std::size_t, 6> aggregate_hits{};
 std::string case_description;
 
 void require(bool ok, const char *message) {
@@ -42,6 +45,18 @@ bool equal(const Deduction &a, const Deduction &b) {
   for (std::size_t c = 0; c < a.children.size(); ++c)
     if (!equal(a.children[c].item, b.children[c].item)) return false;
   return true;
+}
+
+struct Candidate { Key key; Deduction deduction; double contribution, local; };
+
+void compare_candidates(const std::vector<Candidate> &a, const std::vector<Candidate> &b) {
+  require(a.size() == b.size(), "candidate stream length differs");
+  for (std::size_t c = 0; c < a.size(); ++c) {
+    require(equal(a[c].key, b[c].key) && equal(a[c].deduction, b[c].deduction) &&
+                same(a[c].contribution, b[c].contribution) && same(a[c].local, b[c].local),
+            "candidate stream order/full deduction/contribution/local bits differ");
+    ++compared_candidates;
+  }
 }
 
 void compare_charts(const Chart &reference, const Chart &indexed, cand_pos_t n) {
@@ -250,10 +265,17 @@ void check(const Input &input, std::size_t width, sc::WmbClosurePolicy closure,
     for (const auto &key : *reference.widths.forced_items)
       require(indexed.widths.forced_items->count(key), "forcing prepass changed a retained key");
   }
-  const auto sum_reference = sc::replay::run_w_final_vp_wmbp_online<Sum>(
-      reference_context, n, reference.widths, reference.ranking);
-  const auto sum_indexed = sc::replay::run_w_final_vp_wmbp_online<Sum>(
-      indexed_context, n, indexed.widths, indexed.ranking);
+  std::vector<Candidate> candidates[2];
+  const auto observer = [&](std::size_t side) {
+    return [&, side](const Key &key, const Deduction &d, double value, const Chart &, auto local) {
+      candidates[side].push_back({key, d, value, sc::weights::log_weight(local)});
+    };
+  };
+  const auto sum_reference = sc::replay::run_w_final_vp_wmbp_online_observed<Sum>(
+      reference_context, n, reference.widths, observer(0), reference.ranking);
+  const auto sum_indexed = sc::replay::run_w_final_vp_wmbp_online_observed<Sum>(
+      indexed_context, n, indexed.widths, observer(1), indexed.ranking);
+  compare_candidates(candidates[0], candidates[1]);
   compare_charts(sum_reference.chart, sum_indexed.chart, n);
   compare_work(sum_reference, sum_indexed);
   const Key root{NT::W, 1, n, -1, -1};
@@ -361,14 +383,116 @@ void direct_guide_contract(const Input &input, std::size_t width, sc::WmbClosure
   direct_guide_lookup<false>(ctx, pilot.chart, n, width);
 }
 
-struct Candidate { Key key; Deduction deduction; double contribution; };
+template <class Reconstructs, class Contribution, class Find>
+void compare_aggregate_lookup(NT family, cand_pos_t j, std::size_t slot,
+                              Reconstructs reconstructs, Contribution contribution, Find find) {
+  const auto check = [&](const Deduction &d) {
+    const bool expected = reconstructs(d);
+    const auto *actual = find(d);
+    require((actual != nullptr) == expected,
+            "one-probe aggregate lookup changed rule/full-parent ownership");
+    if (actual) {
+      require(same(*actual, contribution(d.parent)),
+              "one-probe aggregate lookup changed value bits");
+      ++aggregate_hits[slot];
+    }
+    ++contribution_queries;
+  };
+  // The old reconstructs_* predicate and value getter remain independent
+  // references. Test every rule, including rules owned by the other five
+  // agendas, and full-key misses even when their primary span is present.
+  for (cand_pos_t i = 0; i <= j + 1; ++i) {
+    for (auto rule : sc::grammar::all_rule_ids()) {
+      Deduction d{};
+      d.parent = {family, i, j, -1, -1};
+      d.rule = rule;
+      check(d);
+      d.parent.ip = 0;
+      check(d);
+      d.parent.ip = -1;
+      d.parent.jp = 0;
+      check(d);
+      d.parent.jp = -1;
+      d.parent.nonterminal = NT::BE;
+      check(d);
+      d.parent.nonterminal = family;
+      ++d.parent.j;
+      check(d);
+    }
+  }
+}
+
+template <class Semiring>
+void aggregate_lookup_contract(const Input &input, sc::WmbClosurePolicy closure) {
+  case_description = input.name + " private aggregate lookup";
+  sc::weights::RuntimeSnapshot owner(input.sequence, input.scaffold);
+  sc::replay::WFinalLogWeightContext ctx(owner, closure);
+  const cand_pos_t n = input.sequence.size();
+  // Synthetic positive retained cells exercise each aggregate independently
+  // of whether another beam happens to prune its supporting scaffold item.
+  Chart chart(Semiring::zero());
+  std::vector<std::vector<cand_pos_t>> starts_by_end(n + 1);
+  std::vector<std::vector<Key>> be_by_end(n + 1);
+  const std::vector<cand_pos_t> empty;
+  for (cand_pos_t j = 1; j <= n; ++j) {
+    for (cand_pos_t i = 1; i <= j; ++i) {
+      starts_by_end[j].push_back(i);
+      for (int f = 0; f < static_cast<int>(NT::BE); ++f)
+        chart.set({static_cast<NT>(f), i, j, -1, -1}, 0.125 * (f + i % 3));
+      if (ctx.pair_partner(i) != j) continue;
+      for (cand_pos_t ip = i; ip < j; ++ip) {
+        const cand_pos_t jp = ctx.pair_partner(ip);
+        if (jp <= ip || jp > j) continue;
+        const Key be{NT::BE, i, j, ip, jp};
+        be_by_end[j].push_back(be);
+        chart.set(be, 0.25 * (ip - i));
+      }
+    }
+  }
+  const auto starts = [&](NT, cand_pos_t end) -> const std::vector<cand_pos_t> & {
+    return end > 0 && end <= n ? starts_by_end[end] : empty;
+  };
+  const auto vp_starts = [&](cand_pos_t end) -> const std::vector<cand_pos_t> & {
+    return starts(NT::VP, end);
+  };
+  sc::beam::VmRetainedJoinAgenda<Semiring> vm;
+  sc::beam::WmRetainedJoinAgenda<Semiring> wm;
+  sc::beam::WipRetainedJoinAgenda<Semiring> wip;
+  sc::beam::VplRetainedAgenda<Semiring> vpl;
+  sc::beam::VprRetainedAgenda<Semiring> vpr;
+  sc::beam::WmbRetainedAgenda<Semiring> wmb;
+  sc::beam::WmbBtailStore<Semiring> tails;
+  for (cand_pos_t j = 1; j <= n; ++j) {
+    vm.build_column(j, chart, ctx, starts, 20);
+    wm.build_column(j, chart, ctx, starts, 20);
+    wip.build_column(j, chart, ctx, starts, 20);
+    vpl.build_column(j, chart, ctx, starts_by_end[j], 20);
+    vpr.build_column(j, chart, ctx, starts_by_end[j], vp_starts, 20);
+    tails.build(j, chart, ctx, starts(NT::WI, j - 1), vp_starts, 20);
+    wmb.build_column(j, chart, ctx, starts_by_end[j], be_by_end[j], tails);
+#define COMPARE_AGGREGATE(agenda, family, slot, reconstruct, contribution, find) \
+    compare_aggregate_lookup(NT::family, j, slot, \
+        [&](const auto &d) { return agenda.reconstruct(d); }, \
+        [&](const auto &parent) { return agenda.contribution(parent); }, \
+        [&](const auto &d) { return agenda.find(d); })
+    COMPARE_AGGREGATE(vm, VM, 0, reconstructs_base, base_contribution, find_base_contribution);
+    COMPARE_AGGREGATE(wm, WM, 1, reconstructs_start, start_contribution, find_start_contribution);
+    COMPARE_AGGREGATE(wip, WIP, 2, reconstructs_start, start_contribution, find_start_contribution);
+    COMPARE_AGGREGATE(vpl, VPL, 3, reconstructs, contribution, find_contribution);
+    COMPARE_AGGREGATE(vpr, VPR, 4, reconstructs_base, base_contribution, find_base_contribution);
+    COMPARE_AGGREGATE(wmb, WMB, 5, reconstructs_split, split_contribution, find_split_contribution);
+#undef COMPARE_AGGREGATE
+  }
+}
+
 struct FirstWinners {
   Choices choices;
   sc::beam::RetainedChoices<Max> retention{&choices};
   std::vector<Candidate> candidates;
   std::size_t ties = 0;
-  void observe(const Key &key, const Deduction &deduction, double contribution, const Chart &chart) {
-    candidates.push_back({key, deduction, contribution});
+  void observe(const Key &key, const Deduction &deduction, double contribution,
+               const Chart &chart, double local) {
+    candidates.push_back({key, deduction, contribution, local});
     if (Max::is_zero(contribution)) return;
     retention.before_parent(key, chart);
     const auto *previous = choices.find(key);
@@ -389,8 +513,8 @@ void first_winner_contract() {
   const auto run = [&](FirstWinners &observer) {
     return sc::replay::run_w_final_vp_wmbp_online_observed_transformed<Max>(
         ctx, n, widths,
-        [&](const Key &key, const Deduction &d, double value, const Chart &chart, auto) {
-          observer.observe(key, d, value, chart);
+        [&](const Key &key, const Deduction &d, double value, const Chart &chart, auto local) {
+          observer.observe(key, d, value, chart, sc::weights::log_weight(local));
         }, [](const Deduction &, double value) { return Max::is_zero(value) ? value : 0.0; });
   };
   const auto a = run(reference);
@@ -401,6 +525,7 @@ void first_winner_contract() {
   compare_charts(a.chart, b.chart, n);
   compare_work(a, b);
   compare_choices(reference.choices, indexed.choices);
+  compare_candidates(reference.candidates, indexed.candidates);
   require(reference.ties > 0 && reference.ties == indexed.ties &&
               reference.candidates.size() == indexed.candidates.size(),
           "equal-score first-winner witness is vacuous or reordered");
@@ -451,6 +576,13 @@ int main() {
                              sc::WmbClosurePolicy::LegacyCompatible})
           direct_guide_contract(input, width, closure);
     first_winner_contract();
+    for (auto closure : {sc::WmbClosurePolicy::RequireWeakClosure,
+                         sc::WmbClosurePolicy::LegacyCompatible}) {
+      aggregate_lookup_contract<Sum>(branching, closure);
+      aggregate_lookup_contract<Max>(branching, closure);
+    }
+    for (const auto count : aggregate_hits)
+      require(count > 0, "one-probe aggregate ownership witness is vacuous");
     require(retained_be > 0 && retained_vp > 0, "BE fallback/VP primary beam coverage is vacuous");
     require(guide_cases == 24 && guide_links > 0 && guide_misses > 0,
             "completed-guide index coverage is vacuous");
@@ -458,7 +590,9 @@ int main() {
               << " compared_items=" << compared_items << " compared_choices=" << compared_choices
               << " first_winner_ties=" << first_winner_ties
               << " guide_cases=" << guide_cases << " guide_links=" << guide_links
-              << " guide_misses=" << guide_misses << '\n';
+              << " guide_misses=" << guide_misses
+              << " compared_candidates=" << compared_candidates
+              << " contribution_queries=" << contribution_queries << '\n';
   } catch (const std::exception &error) {
     std::cerr << error.what() << '\n';
     return EXIT_FAILURE;

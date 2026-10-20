@@ -1433,9 +1433,19 @@ inline void append_exact_basic_deductions_for_item(
       if (!exact_vp_public_item_active(item, ctx)) {
         return;
       }
-      append_rule(out, RuleId::VP_WI_CASE1);
-      append_rule(out, RuleId::VP_WI_CASE2);
-      append_rule(out, RuleId::VP_WI_CASE3);
+      // These fixed-coordinate rules observe the same immutable scaffold
+      // geometry. Share that observation while retaining the single-rule
+      // expansion, admission and CASE1/CASE2/CASE3 stream order.
+      if (exact_vp_open_endpoint_allows(ctx, item.i, item.j)) {
+        const auto geometry = observe_vp_wi_geometry(ctx, item.i, item.j);
+        for (const auto rule : {RuleId::VP_WI_CASE1, RuleId::VP_WI_CASE2,
+                                RuleId::VP_WI_CASE3}) {
+          if (const auto split = geometry.split_for(rule)) {
+            const auto deduction = expand_basic_rule(item, rule, *split);
+            if (is_valid(deduction)) out.push_back(deduction);
+          }
+        }
+      }
       append_rule(out, RuleId::VP_STACK);
       append_rule(out, RuleId::VP_INTERNAL_LOOP);
       append_rule(out, RuleId::VP_WIP_VP_LEFT);

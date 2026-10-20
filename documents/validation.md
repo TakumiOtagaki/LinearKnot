@@ -39,7 +39,9 @@ sampling or BPP are not interchangeable semantic references for inside.
   and [chart fallback and ownership](../test/scfg2_numeric_primary_lookup_test.cc),
   including allocation failure after a canonical map update.
 - [Completion lookup](../test/scfg2_bounded_outer_alpha_lookup_test.cc) checks
-  full-key and absent-key values against the original alpha map.
+  full-key and absent-key values against the original alpha map, as well as
+  position deduplication against sort/unique across word boundaries,
+  out-of-range sentinels and optional allocation failures.
   [Bounded maxima](../test/scfg2_outer_max_pool_test.cc) compare the heap
   against a frozen set implementation after each offer, including map
   iteration/buckets, links, rank ties, eviction and copy/move lifetimes.
@@ -57,6 +59,14 @@ sampling or BPP are not interchangeable semantic references for inside.
   the preceding implementation, including inactive child fields and WMBP
   rule-block order. Selected split streams also match filtering the actual
   expanded children, including finite log masses of `-1e300`.
+- [Exact live support](../test/scfg2_exact_live_support_test.cc) compares
+  dense support rows with full scans across word boundaries, all primary
+  families, nonfinite values, erasure, copy/move and optional allocation
+  failures. Selected splits match sparse reference scans under both closure
+  policies and numeric semirings, including custom-context fallbacks.
+  [Schedule checks](../test/scfg2_schedule_invariant_test.cc) compare lazy
+  lexicographic dependency checks with the original complete rank tuples;
+  later invalid children still produce diagnostics.
 - [Shared BE/WMBP availability](../test/scfg2_wmbp_be_availability_test.cc)
   checks the no-overlap boundary against patched-legacy inside/marker values
   and exact/saturated-beam outside.

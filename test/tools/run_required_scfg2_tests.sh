@@ -6,6 +6,7 @@ build_dir="${SCFG2_BUILD_DIR:-$root_dir/build}"
 
 targets=(
   scfg2_exact_numeric_execution_test
+  scfg2_exact_live_support_test
   scfg2_grammar_smoke_test
   scfg2_engine_smoke_test
   scfg2_traceback_lifecycle_test

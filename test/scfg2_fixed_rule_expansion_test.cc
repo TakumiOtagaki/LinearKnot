@@ -199,12 +199,119 @@ std::size_t check_wm_split_streams() {
   return checks;
 }
 
+// The item dispatcher may share read-only geometry across fixed VP cases;
+// the unchanged single-rule entries provide the independent ordered oracle.
+std::size_t check_vp_geometry_streams() {
+  struct Context : deductions::PairabilityContext {
+    deductions::VpWiGeometry geometry{};
+    bool pairs = true, closed = false, left_free = true, right_free = true;
+    cand_pos_t left_round = -2, right_round = -2;
+    mutable std::size_t parent_queries = 0;
+    cand_pos_t turn() const override { return 3; }
+    cand_pos_t sequence_length() const override { return 32; }
+    bool can_pair(cand_pos_t i, cand_pos_t j) const override {
+      return pairs && i == 3 && j == 18;
+    }
+    cand_pos_t unpaired_prefix(cand_pos_t pos) const override { return pos; }
+    cand_pos_t pair_round(cand_pos_t pos) const override {
+      return pos == 3 ? left_round : pos == 18 ? right_round : -2;
+    }
+    bool is_unpaired(cand_pos_t pos) const override {
+      return pos == 3 ? left_free : pos == 18 ? right_free : true;
+    }
+    bool weakly_closed(cand_pos_t, cand_pos_t) const override { return closed; }
+    bool is_empty_region(cand_pos_t i, cand_pos_t j) const override { return i < j; }
+    cand_pos_t parent_index(cand_pos_t pos) const override {
+      ++parent_queries;
+      return pos == 3 ? geometry.left_cover : geometry.right_cover;
+    }
+    cand_pos_t border_b(cand_pos_t, cand_pos_t) const override { return geometry.b; }
+    cand_pos_t border_bp(cand_pos_t, cand_pos_t) const override { return geometry.bp; }
+    cand_pos_t border_B(cand_pos_t, cand_pos_t) const override { return geometry.B; }
+    cand_pos_t border_Bp(cand_pos_t, cand_pos_t) const override { return geometry.Bp; }
+  };
+  constexpr std::array<RuleId, 9> vp_rules{{
+      RuleId::VP_WI_CASE1, RuleId::VP_WI_CASE2, RuleId::VP_WI_CASE3,
+      RuleId::VP_STACK, RuleId::VP_INTERNAL_LOOP, RuleId::VP_WIP_VP_LEFT,
+      RuleId::VP_VP_WIP_RIGHT, RuleId::VP_WIP_VPR, RuleId::VP_VPL_WIP}};
+  std::vector<deductions::VpWiGeometry> geometries{
+      // Cases 1 and 2, missing/zero borders and invalid fixed splits.
+      {2, 1, 8, 12, -1, -1}, {1, 2, -1, -1, 8, 12},
+      {-1, -1, -1, -1, -1, -1}, {0, 0, 0, 0, 0, 0},
+      {2, 1, 19, 20, -1, -1}, {1, 2, -1, -1, 2, 1},
+      {2, 1, 0, 0, -1, -1}, {1, 2, -1, -1, 0, 0},
+      {2, 1, -1, 12, 8, -1}, {1, 2, -1, 12, 8, -1}};
+  // All eight empty/nonempty wing combinations of Case 3, including its
+  // boundary and nonleft variants. Geometry fields are Bp, B, b, bp.
+  for (bool left_empty : {false, true})
+    for (bool middle_empty : {false, true})
+      for (bool right_empty : {false, true})
+        geometries.push_back({2, 2, left_empty ? 4 : 5, 9,
+                              middle_empty ? 10 : 11, right_empty ? 17 : 16});
+  const std::vector<cand_pos_t> selected{1, 4, 5, 9, 10, 11, 16, 18, 32};
+  const std::vector<cand_pos_t> empty;
+  std::array<std::size_t, 3> case_counts{};
+  std::size_t checks = 0, shared_observations = 0;
+  const auto fail = [](const char *message) {
+    std::cerr << message << '\n';
+    std::exit(EXIT_FAILURE);
+  };
+  for (const auto &geometry : geometries) {
+    for (int gate = 0; gate < 8; ++gate) {
+      Context reference;
+      reference.geometry = geometry;
+      reference.pairs = gate != 1;
+      reference.closed = gate == 2;
+      reference.left_free = gate != 3;
+      reference.right_free = gate != 4;
+      reference.left_round = gate == 5 ? -1 : gate == 6 ? 18 : -2;
+      reference.right_round = gate == 7 ? -1 : -2;
+      for (const auto &parent : {ItemKey{NonTerminal::VP, 3, 18, -1, -1},
+                                ItemKey{NonTerminal::VP, 3, 18, 4, 17}}) {
+        for (const auto *view : {static_cast<const std::vector<cand_pos_t> *>(nullptr),
+                                &selected, &empty}) {
+          auto shared = reference;
+          reference.parent_queries = shared.parent_queries = 0;
+          const auto prefix = deductions::expand_basic_rule(
+              ItemKey{NonTerminal::V, 1, 8, -1, -1}, RuleId::V_HAIRPIN, RuleSplit{});
+          std::vector<Deduction> expected{prefix}, generated{prefix};
+          if (deductions::exact_vp_public_item_active(parent, reference)) {
+            for (const auto rule : vp_rules)
+              deductions::append_exact_basic_deductions(expected, parent, rule, reference, view);
+          }
+          deductions::append_exact_basic_deductions_for_item(generated, parent, shared, view);
+          if (expected.size() != generated.size()) fail("shared VP geometry changed stream size");
+          for (std::size_t c = 0; c < generated.size(); ++c) {
+            if (!same_deduction(expected[c], generated[c]))
+              fail("shared VP geometry changed complete candidate fields/order");
+            for (std::size_t rule = 0; rule < case_counts.size(); ++rule)
+              if (generated[c].rule == vp_rules[rule]) ++case_counts[rule];
+            ++checks;
+          }
+          if (reference.parent_queries == 6) {
+            if (shared.parent_queries != 2) fail("VP geometry was not observed once per parent");
+            ++shared_observations;
+          } else if (reference.parent_queries != 0 || shared.parent_queries != 0) {
+            fail("inactive VP parent observed fixed-case geometry");
+          }
+        }
+      }
+    }
+  }
+  if (!shared_observations) fail("shared VP geometry observation witness is vacuous");
+  for (const auto count : case_counts)
+    if (!count) fail("shared VP geometry omitted a fixed case witness");
+  return checks;
+}
+
 }  // namespace
 
 int main() {
   const auto checks = check_all_rules(std::make_index_sequence<rules.size()>{});
   const auto streams = check_wm_split_streams();
+  const auto vp_streams = check_vp_geometry_streams();
   std::cout << "scfg2_fixed_rule_expansion=ok rules=" << rules.size()
-            << " checks=" << checks << " generated_candidates=" << streams << '\n';
+            << " checks=" << checks << " generated_candidates=" << streams
+            << " vp_geometry_candidates=" << vp_streams << '\n';
   return EXIT_SUCCESS;
 }

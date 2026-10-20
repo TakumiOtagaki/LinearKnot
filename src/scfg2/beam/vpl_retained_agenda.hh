@@ -97,6 +97,14 @@ class VplRetainedAgenda {
     return std::move(found->second);
   }
 
+  // Observe a private aggregate with one map probe. The source remains
+  // owned by this column; the pointer expires at the next build_column().
+  const Value *find_contribution(const deductions::Deduction &deduction) const {
+    if (deduction.rule != grammar::RuleId::VPL_SPLIT_VP) return nullptr;
+    const auto found = contribution_by_parent_.find(deduction.parent);
+    return found == contribution_by_parent_.end() ? nullptr : &found->second;
+  }
+
   bool reconstructs(const deductions::Deduction &deduction) const {
     return deduction.rule == grammar::RuleId::VPL_SPLIT_VP &&
            contribution_by_parent_.find(deduction.parent) !=

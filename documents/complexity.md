@@ -58,6 +58,11 @@ immutable sorted alpha rows costs O(log(b+2)). These changes preserve the
 budgets above. An optional sorted diagnostic view has a separate
 O(b log(b+2)) observation cost per changed pool.
 
+Proposal-position deduplication adds O(n) bits and O(b) touched-word metadata.
+Each parent sorts and clears only its touched words, never the entire
+sequence-sized bit set. Raw proposal counts and their O(b) budget are
+checked before deduplication, preserving the stated beam bounds.
+
 For standard forcing width beta = max(1000,b) and pilot width p = ceil(b^q),
 q in {1/2,2/3}, the sequential phase budgets are
 
@@ -88,6 +93,15 @@ Four-coordinate BE states retain sparse keys. Initializing these planes
 costs O(n^2) time and space. Numeric marginal collection traverses them
 directly without materializing a second hash map. Finite-beam charts remain
 sparse, so they do not acquire this quadratic allocation.
+
+Dense log-numeric charts optionally keep two nonzero-support bit planes,
+indexed by family/end/start and family/start/end. Their payload is
+`2 * 14 * n * ceil(n/64) * 8` bytes, in addition to values and presence.
+Updates cost O(1); scanning a split range costs O(ceil(n/64) + L) for L
+enumerated live coordinates. Selection still checks the shared expansion
+and every child of each enumerated split. Unsupported execution contexts
+and allocation failures retain the full coordinate scan. This index adds
+O(n^2) bits without changing the exact space bound or the finite-beam budget.
 
 With fixed local-loop model size, peak logical space is O(n^2 + nr).
 This bound does not include the separate traceback storage used by exact

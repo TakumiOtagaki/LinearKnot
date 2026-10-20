@@ -139,6 +139,14 @@ class VmRetainedJoinAgenda {
     return std::move(found->second);
   }
 
+  // Observe a private aggregate with one map probe. The source remains
+  // owned by this column; the pointer expires at the next build_column().
+  const Value *find_base_contribution(const deductions::Deduction &deduction) const {
+    if (deduction.rule != grammar::RuleId::VM_SPLIT_WMp_BASE) return nullptr;
+    const auto found = base_contribution_by_parent_.find(deduction.parent);
+    return found == base_contribution_by_parent_.end() ? nullptr : &found->second;
+  }
+
   bool reconstructs_base(const deductions::Deduction &deduction) const {
     return deduction.rule == grammar::RuleId::VM_SPLIT_WMp_BASE &&
            base_contribution_by_parent_.find(deduction.parent) !=

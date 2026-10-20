@@ -160,6 +160,14 @@ class WmbRetainedAgenda {
     }
     return std::move(found->second);
   }
+  // Observe a private aggregate with one map probe. The source remains
+  // owned by this column; the pointer expires at the next build_column().
+  const Value *find_split_contribution(const deductions::Deduction &deduction) const {
+    if (deduction.rule != grammar::RuleId::WMB_SPLIT_BE_WMBP_WI) return nullptr;
+    const auto found = split_contribution_by_parent_.find(deduction.parent);
+    return found == split_contribution_by_parent_.end() ? nullptr : &found->second;
+  }
+
   bool reconstructs_split(const deductions::Deduction &deduction) const {
     return deduction.rule == grammar::RuleId::WMB_SPLIT_BE_WMBP_WI &&
            split_contribution_by_parent_.find(deduction.parent) !=

@@ -5,11 +5,14 @@
 #include "scfg2/replay/w_final_exact_inside.hh"
 
 #include <cstdlib>
+#include <array>
 #include <iostream>
+#include <limits>
 #include <random>
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
 
 namespace {
@@ -18,11 +21,71 @@ using D = deductions::Deduction;
 using Key = deductions::ItemKey;
 using NT = grammar::NonTerminal;
 using R = grammar::RuleId;
-std::size_t scaffolds = 0, items = 0, candidates = 0;
+std::size_t scaffolds = 0, items = 0, candidates = 0, compared_ranks = 0;
 std::set<R> covered_rules;
 
 void require(bool ok, const std::string &message) {
   if (!ok) { std::cerr << message << '\n'; std::exit(EXIT_FAILURE); }
+}
+
+// Frozen pre-optimization rank and predicate. Do not reuse the production
+// phase helper or lazy comparator: unknown families also have the old phase 15.
+auto frozen_rank(const Key &key) {
+  constexpr std::array<int, 15> phases{14, 13, 1, 0, 2, 10, 11, 12, 5, 6, 3, 8, 7, 9, 4};
+  const auto family = static_cast<unsigned char>(key.nonterminal);
+  return std::make_tuple(key.j - key.i + 1,
+      family < phases.size() ? phases[family] : 15, key.i, key.ip, key.jp);
+}
+
+bool frozen_supports(const D &deduction) {
+  if (deduction.child_count > deduction.children.size()) return false;
+  const auto parent_rank = frozen_rank(deduction.parent);
+  for (std::size_t c = 0; c < deduction.child_count; ++c)
+    if (!(frozen_rank(deduction.children[c].item) < parent_rank)) return false;
+  return true;
+}
+
+void compare_frozen(const D &deduction) {
+  require(engine::legacy_span_schedule_supports(deduction) == frozen_supports(deduction),
+      "lazy schedule predicate differs from frozen tuple comparison");
+  ++compared_ranks;
+}
+
+void check_rank_comparison() {
+  std::vector<NT> families;
+  for (int family = 0; family <= static_cast<int>(NT::BE); ++family)
+    families.push_back(static_cast<NT>(family));
+  for (int family : {15, 99, 255}) families.push_back(static_cast<NT>(family));
+  for (const auto parent_family : families) {
+    for (bool secondary : {false, true}) {
+      D d;
+      d.parent = {parent_family, 8, 20, secondary ? 12 : -1, secondary ? 17 : -1};
+      d.rule = R::V_INTERNAL;
+      d.split = {2, 6};
+      compare_frozen(d);  // No-child rules keep their old unconditional result.
+      for (const auto child_family : families)
+        for (int span_delta : {-1, 0, 1})
+          for (int i_delta : {-1, 0, 1})
+            for (int ip_delta : {-1, 0, 1})
+              for (int jp_delta : {-1, 0, 1}) {
+                const int i = d.parent.i + i_delta;
+                const Key child{child_family, i, i + 12 + span_delta,
+                    d.parent.ip + ip_delta, d.parent.jp + jp_delta};
+                require(engine::legacy_span_schedule_rank(child) == frozen_rank(child),
+                    "schedule rank observation changed");
+                for (std::size_t target = 0; target < d.children.size(); ++target) {
+                  for (auto &slot : d.children) slot.item = {NT::W, 1, 1, -1, -1};
+                  d.children[target].item = child;
+                  d.child_count = target + 1;
+                  compare_frozen(d);  // Includes an invalid final edge after valid earlier edges.
+                }
+              }
+      for (const auto count : {d.children.size() + 1, std::numeric_limits<std::size_t>::max()}) {
+        d.child_count = count;
+        compare_frozen(d);
+      }
+    }
+  }
 }
 
 // Geometry-only superset: every ordered pair is sequence-compatible. This
@@ -99,14 +162,14 @@ void enumerate(std::string &g, int balance, int remaining) {
   }
 }
 
-void expect_violation(const D &d, const std::string &child_text) {
+void expect_violation(const D &d, const std::string &child_text, std::size_t child_idx = 0) {
   require(!engine::legacy_span_schedule_supports(d), "invalid dependency passed observation predicate");
   try { engine::require_legacy_span_schedule_support(d); }
   catch (const std::logic_error &e) {
     const std::string message(e.what());
     for (const auto &part : {std::string("internal scfg2 schedule invariant"),
                              std::string(grammar::rule_name(d.rule)),
-                             std::string("parent="), std::string("runtime_child[0]="),
+                             std::string("parent="), "runtime_child[" + std::to_string(child_idx) + "]=",
                              child_text, std::string("split=(k=2,l=6,p=-1,q=-1)"),
                              std::string("expected runtime child rank < parent rank")})
       require(message.find(part) != std::string::npos, "incomplete dependency diagnostic: " + message);
@@ -125,6 +188,12 @@ void check_diagnostics() {
   expect_violation(d, "WI(1,7;-1,-1)");  // Same span, later phase.
   d.children[0].item = Key{NT::V, 1, 8, -1, -1};
   expect_violation(d, "V(1,8;-1,-1)");  // Wider child.
+  for (std::size_t bad_child : {std::size_t(1), std::size_t(2)}) {
+    for (auto &child : d.children) child.item = {NT::V, 2, 6, -1, -1};
+    d.child_count = bad_child + 1;
+    d.children[bad_child].item = parent;
+    expect_violation(d, "V(1,7;-1,-1)", bad_child);
+  }
   engine::require_legacy_span_schedule_support(
       deductions::expand_basic_rule(parent, R::V_HAIRPIN, {}));
   engine::require_legacy_span_schedule_support(
@@ -152,10 +221,12 @@ struct ZeroWeight {
 };
 
 template <class Semiring>
-void check_executor_violation(bool caller_allows) {
+void check_executor_violation(bool caller_allows, std::size_t bad_child) {
   const Key parent{NT::V, 1, 7, -1, -1};
   auto corrupt = deductions::expand_basic_rule(parent, R::V_INTERNAL, grammar::RuleSplit{2, 6});
-  corrupt.children[0].item = parent;
+  for (auto &child : corrupt.children) child.item = corrupt.children[0].item;
+  corrupt.children[bad_child].item = parent;
+  corrupt.child_count = bad_child + 1;
   auto provider = [&](const Key &) { return std::vector<D>{corrupt}; };
   bool allows_called = false, contribution_called = false, committed = false;
   auto allows = [&](const D &) { allows_called = true; return caller_allows; };
@@ -191,11 +262,13 @@ void check_real(std::string seq, std::string g) {
 }  // namespace
 
 int main() {
+  check_rank_comparison();
   check_diagnostics();
-  for (bool caller_allows : {false, true}) {
-    check_executor_violation<semirings::LogSumExpSemiring>(caller_allows);
-    check_executor_violation<semirings::LogMaxSemiring>(caller_allows);
-  }
+  for (bool caller_allows : {false, true})
+    for (std::size_t bad_child = 0; bad_child < 3; ++bad_child) {
+      check_executor_violation<semirings::LogSumExpSemiring>(caller_allows, bad_child);
+      check_executor_violation<semirings::LogMaxSemiring>(caller_allows, bad_child);
+    }
   for (int n = 1; n <= 13; ++n) { std::string g; enumerate(g, 0, n); }
   std::mt19937 rng(20261013);
   for (int n : {20, 32, 50}) for (int repeat = 0; repeat < 20; ++repeat) {
@@ -220,5 +293,6 @@ int main() {
           "inactive exact rule unexpectedly generated");
   require(covered_rules.size() == 55, "dependency audit missed an effective exact rule");
   std::cout << "scfg2_schedule_invariant=ok scaffolds=" << scaffolds << " items=" << items
-            << " candidates=" << candidates << " covered_rules=" << covered_rules.size() << '\n';
+            << " candidates=" << candidates << " covered_rules=" << covered_rules.size()
+            << " compared_ranks=" << compared_ranks << '\n';
 }

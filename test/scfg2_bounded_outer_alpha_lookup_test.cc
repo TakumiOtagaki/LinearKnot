@@ -5,9 +5,39 @@
 #include <exception>
 #include <iostream>
 #include <limits>
+#include <new>
+#include <random>
 #include <stdexcept>
 #include <utility>
 #include <vector>
+
+// Fail one optional-index allocation in a narrowly armed call. Normal test
+// setup and the frozen sorter keep the ordinary malloc/free allocator.
+namespace proposal_allocation_fault {
+enum class Kind { BadAlloc, LengthError };
+thread_local long remaining = -1;
+thread_local bool fired = false;
+thread_local Kind kind = Kind::BadAlloc;
+void arm(long before, Kind failure_kind) {
+  remaining = before; fired = false; kind = failure_kind;
+}
+void disable() { remaining = -1; }
+void *allocate(std::size_t bytes) {
+  if (remaining >= 0 && remaining-- == 0) {
+    remaining = -1; fired = true;
+    if (kind == Kind::LengthError) throw std::length_error("proposal allocation fault");
+    throw std::bad_alloc{};
+  }
+  if (void *memory = std::malloc(bytes ? bytes : 1)) return memory;
+  throw std::bad_alloc{};
+}
+}
+void *operator new(std::size_t bytes) { return proposal_allocation_fault::allocate(bytes); }
+void *operator new[](std::size_t bytes) { return proposal_allocation_fault::allocate(bytes); }
+void operator delete(void *memory) noexcept { std::free(memory); }
+void operator delete[](void *memory) noexcept { std::free(memory); }
+void operator delete(void *memory, std::size_t) noexcept { std::free(memory); }
+void operator delete[](void *memory, std::size_t) noexcept { std::free(memory); }
 
 namespace {
 namespace sc = cparty::scfg2;
@@ -19,6 +49,94 @@ void require(bool ok, const char *message) {
   if (!ok) throw std::runtime_error(message);
 }
 bool same(double a, double b) { return std::memcmp(&a, &b, sizeof(a)) == 0; }
+
+void reference_sort_unique(std::vector<int> &input) {
+  std::sort(input.begin(), input.end());
+  input.erase(std::unique(input.begin(), input.end()), input.end());
+}
+
+std::size_t proposal_position_contract() {
+  std::size_t compared = 0;
+  std::mt19937 rng(20261021);
+  for (const int n : {0, 1, 60, 61, 62, 250, 500, 1000000}) {
+    outer::ProposalPositionBits bits(n);
+    require(bits.word_count() == 0, "proposal bitset allocated before use");
+    const auto compare = [&](std::vector<int> input) {
+      auto expected = input;
+      reference_sort_unique(expected);
+      bits.sort_unique(input);
+      require(input == expected, "proposal bitset differs from frozen sort/unique");
+      require(bits.active_word_count() == 0, "proposal bitset retained dirty words");
+      ++compared;
+    };
+    compare({});
+    compare({-2, -1, 0, 1, n, n + 1, -2, n + 1});
+    require(bits.word_count() == (static_cast<std::size_t>(n) + 67) / 64,
+        "proposal bitset metadata extent differs");
+    compare({n + 1, n + 1, -2, -2});
+    compare({-3, n + 2, -3, n + 2, -2, -1});
+    compare({std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), 0});
+    std::uniform_int_distribution<int> position(-2, n + 1);
+    for (int repeat = 0; repeat < 1200; ++repeat) {
+      std::vector<int> input;
+      const auto size = rng() % 700;
+      input.reserve(size + 2);
+      for (std::size_t p = 0; p < size; ++p) input.push_back(position(rng));
+      if (repeat % 7 == 0) input.push_back(-3);
+      if (repeat % 11 == 0) input.push_back(n + 2);
+      if (repeat % 13 == 0) {
+        input.push_back(std::numeric_limits<int>::min());
+        input.push_back(std::numeric_limits<int>::max());
+      }
+      compare(std::move(input));
+      compare({-2, n + 1});  // Sparse reuse after a wide or fallback parent.
+    }
+  }
+  return compared;
+}
+
+void proposal_allocation_contract() {
+  namespace fault = proposal_allocation_fault;
+  // Both metadata and touched-ID allocation are optional. The original
+  // integer sort can finish without either allocation or altered input.
+  for (const auto kind : {fault::Kind::BadAlloc, fault::Kind::LengthError}) {
+    for (long failure : {0, 1}) {
+      outer::ProposalPositionBits bits(500);
+      std::vector<int> input{501, -2, 61, 500, 0, 250, 61, 60, -1};
+      auto expected = input;
+      reference_sort_unique(expected);
+      fault::arm(failure, kind);
+      bits.sort_unique(input);
+      const bool fired = fault::fired;
+      fault::disable();
+      require(fired && input == expected && !bits.enabled() && bits.word_count() == 0 &&
+          bits.active_word_count() == 0 && bits.touched_capacity() == 0,
+          "proposal allocation failure did not release index and preserve sorted output");
+      input = {500, -2, 61, 61};
+      expected = input;
+      reference_sort_unique(expected);
+      fault::arm(0, kind);
+      bits.sort_unique(input);
+      const bool retried = fault::fired;
+      fault::disable();
+      require(!retried && input == expected, "disabled proposal index retried allocation");
+    }
+    outer::ProposalPositionBits bits(1000000);
+    std::vector<int> warm{-2, -1};
+    bits.sort_unique(warm);
+    std::vector<int> input;
+    for (int p = 255; p >= 0; --p) input.push_back(p * 64 - 2);
+    auto expected = input;
+    reference_sort_unique(expected);
+    fault::arm(0, kind);  // Grow touched IDs after metadata already exists.
+    bits.sort_unique(input);
+    const bool fired = fault::fired;
+    fault::disable();
+    require(fired && input == expected && !bits.enabled() && bits.word_count() == 0 &&
+        bits.active_word_count() == 0,
+        "proposal scratch growth failure left dirty words or changed positions");
+  }
+}
 
 // Point lookup needs only the static scaffold boundary of the context. Keep
 // this witness independent of thermodynamic setup and inside computation.
@@ -118,9 +236,12 @@ std::size_t check(std::size_t width) {
 
 int main() {
   try {
+    const auto positions = proposal_position_contract();
+    proposal_allocation_contract();
     std::size_t queries = 0;
     for (std::size_t width : {1, 2, 22}) queries += check(width);
-    std::cout << "scfg2_bounded_outer_alpha_lookup=ok widths=3 queries=" << queries << '\n';
+    std::cout << "scfg2_bounded_outer_alpha_lookup=ok widths=3 queries=" << queries
+              << " proposal_positions=" << positions << '\n';
   } catch (const std::exception &error) {
     std::cerr << error.what() << '\n';
     return EXIT_FAILURE;

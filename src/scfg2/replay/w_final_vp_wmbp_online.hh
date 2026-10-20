@@ -615,32 +615,58 @@ run_w_final_vp_wmbp_online_impl(
   auto raw_contribution = [&](const deductions::Deduction &deduction,
                               const auto &current_chart,
                               auto local) {
-    if (!case3_left_selection.allows(deduction)) return Semiring::zero();
-    if (!be_tail_selection.allows(deduction)) return Semiring::zero();
-    if (!be_shell_selection.allows(deduction)) return Semiring::zero();
-    if (!wmbp_prefix_selection.allows(deduction)) return Semiring::zero();
-    if (vm_agenda.reconstructs_base(deduction)) {
-      return semirings::checkpoint_value(vm_agenda.base_contribution(deduction.parent));
-    }
-    if (wm_agenda.reconstructs_start(deduction)) {
-      return semirings::checkpoint_value(wm_agenda.start_contribution(deduction.parent));
-    }
-    if (wip_agenda.reconstructs_start(deduction)) {
-      return semirings::checkpoint_value(wip_agenda.start_contribution(deduction.parent));
-    }
-    if (vpl_agenda.reconstructs(deduction)) {
-      return semirings::checkpoint_value(vpl_agenda.contribution(deduction.parent));
-    }
-    if (vpr_agenda.reconstructs_base(deduction)) {
-      return semirings::checkpoint_value(vpr_agenda.base_contribution(deduction.parent));
-    }
-    if (wmb_agenda.reconstructs_split(deduction)) {
-      return semirings::checkpoint_value(wmb_agenda.split_contribution(deduction.parent));
-    }
-    if (deduction.rule == grammar::RuleId::VP_WI_CASE3) {
-      const auto reconstructed =
-          case3_left.template reconstruct_source<Semiring>(deduction, local);
-      if (reconstructed.has_value()) return *reconstructed;
+    // Selection and private-aggregate ownership are disjoint rule contracts.
+    // Dispatch once instead of asking every unrelated owner about each source.
+    // Local-weight evaluation and its zero gate remain in the shared executor.
+    using Rule = grammar::RuleId;
+    switch (deduction.rule) {
+      case Rule::VP_WI_CASE3: {
+        if (!case3_left_selection.allows(deduction)) return Semiring::zero();
+        const auto reconstructed =
+            case3_left.template reconstruct_source<Semiring>(deduction, local);
+        if (reconstructed.has_value()) return *reconstructed;
+        break;
+      }
+      case Rule::BE_WIP_WIP:
+      case Rule::BE_BASEPAIR_WIP:
+        if (!be_tail_selection.allows(deduction)) return Semiring::zero();
+        if (!be_shell_selection.allows(deduction)) return Semiring::zero();
+        break;
+      case Rule::WMBP_SPLIT_BE_WMBP_VP:
+      case Rule::WMBP_SPLIT_BE_WMBW_VP:
+      case Rule::WMBP_SPLIT_BE_WI_VP:
+        if (!wmbp_prefix_selection.allows(deduction)) return Semiring::zero();
+        break;
+      case Rule::VM_SPLIT_WMp_BASE:
+        if (const auto *value = vm_agenda.find_base_contribution(deduction))
+          return semirings::checkpoint_value(*value);
+        break;
+      case Rule::WM_START_V:
+      case Rule::WM_START_WMB:
+        if (const auto *value = wm_agenda.find_start_contribution(deduction))
+          return semirings::checkpoint_value(*value);
+        break;
+      case Rule::WIP_BASE_V:
+      case Rule::WIP_BASE_WMB:
+      case Rule::WIP_BASEPAIR_V:
+      case Rule::WIP_BASEPAIR_WMB:
+        if (const auto *value = wip_agenda.find_start_contribution(deduction))
+          return semirings::checkpoint_value(*value);
+        break;
+      case Rule::VPL_SPLIT_VP:
+        if (const auto *value = vpl_agenda.find_contribution(deduction))
+          return semirings::checkpoint_value(*value);
+        break;
+      case Rule::VPR_SPLIT_VP_BASEPAIR:
+        if (const auto *value = vpr_agenda.find_base_contribution(deduction))
+          return semirings::checkpoint_value(*value);
+        break;
+      case Rule::WMB_SPLIT_BE_WMBP_WI:
+        if (const auto *value = wmb_agenda.find_split_contribution(deduction))
+          return semirings::checkpoint_value(*value);
+        break;
+      default:
+        break;
     }
     return runtime_deduction_contribution<Semiring>(
         current_chart, deduction, local);
