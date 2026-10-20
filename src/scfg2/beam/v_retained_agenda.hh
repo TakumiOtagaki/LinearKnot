@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <bitset>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <limits>
 #include <stdexcept>
@@ -49,7 +50,7 @@ class VRetainedAgenda {
       ++stats_.hairpin_parent_probes;
       const deductions::ItemKey parent{
           grammar::NonTerminal::V, i, j, -1, -1};
-      append_generated(parent, grammar::RuleId::V_HAIRPIN, nullptr, ctx);
+      append_generated<grammar::RuleId::V_HAIRPIN>(parent, nullptr, ctx);
     }
     // The hairpin cap is a pruning heuristic for G' pairs.  A scaffold pair
     // closing at j must stay formable whatever its loop length.
@@ -58,13 +59,13 @@ class VRetainedAgenda {
       ++stats_.hairpin_parent_probes;
       const deductions::ItemKey parent{
           grammar::NonTerminal::V, scaffold_i, j, -1, -1};
-      append_generated(parent, grammar::RuleId::V_HAIRPIN, nullptr, ctx);
+      append_generated<grammar::RuleId::V_HAIRPIN>(parent, nullptr, ctx);
     }
     for (const cand_pos_t i : retained_vm_starts) {
       ++stats_.vm_parent_probes;
       const deductions::ItemKey parent{
           grammar::NonTerminal::V, i, j, -1, -1};
-      append_generated(parent, grammar::RuleId::V_VM, nullptr, ctx);
+      append_generated<grammar::RuleId::V_VM>(parent, nullptr, ctx);
     }
 
     const auto found = parent_starts_by_column_.find(j);
@@ -109,8 +110,7 @@ class VRetainedAgenda {
           ++stats_.internal_parent_probes;
           const deductions::ItemKey parent{
               grammar::NonTerminal::V, parent_i, parent_j, -1, -1};
-          append_generated(
-              parent, grammar::RuleId::V_INTERNAL, &child, ctx);
+          append_generated<grammar::RuleId::V_INTERNAL>(parent, &child, ctx);
         }
       }
     }
@@ -122,9 +122,35 @@ class VRetainedAgenda {
 
   std::vector<deductions::Deduction> take_for(
       const deductions::ItemKey &parent) {
-    const auto found = deductions_by_parent_.find(parent);
+    // The packed index represents only canonical V parents. Other complete
+    // ItemKeys must keep the old full-key map's absent-key behavior.
+    if (parent.nonterminal != grammar::NonTerminal::V ||
+        parent.ip != -1 || parent.jp != -1 ||
+        !deductions::is_valid_primary_span(parent)) return {};
+    const auto found = deductions_by_parent_.find(parent_key(parent.i, parent.j));
     if (found == deductions_by_parent_.end()) return {};
-    auto out = std::move(found->second.sources);
+    std::vector<deductions::Deduction> out;
+    out.reserve(found->second.sources.size());
+    // Expansion is pure. Restore every field through the shared schema in
+    // first-arrival order before releasing this parent's owned records.
+    for (const auto &source : found->second.sources) {
+      grammar::RuleSplit split{};
+      split.k = source.k;
+      split.l = source.l;
+      switch (source.rule) {
+        case grammar::RuleId::V_HAIRPIN:
+          out.push_back(deductions::expand_basic_rule<grammar::RuleId::V_HAIRPIN>(parent, split));
+          break;
+        case grammar::RuleId::V_INTERNAL:
+          out.push_back(deductions::expand_basic_rule<grammar::RuleId::V_INTERNAL>(parent, split));
+          break;
+        case grammar::RuleId::V_VM:
+          out.push_back(deductions::expand_basic_rule<grammar::RuleId::V_VM>(parent, split));
+          break;
+        default:
+          throw std::logic_error("unexpected compact V source rule");
+      }
+    }
     deductions_by_parent_.erase(found);
     return out;
   }
@@ -136,7 +162,7 @@ class VRetainedAgenda {
   // expired after the complete V phase; no later column can consume them.
   void release_column() {
     for (const cand_pos_t i : parent_starts_)
-      deductions_by_parent_.erase({grammar::NonTerminal::V, i, column_, -1, -1});
+      deductions_by_parent_.erase(parent_key(i, column_));
     parent_starts_.clear();
   }
   std::size_t pending_parent_count() const { return deductions_by_parent_.size(); }
@@ -146,8 +172,8 @@ class VRetainedAgenda {
     auto out = hash_memory(name, deductions_by_parent_);
     for (const auto &[parent, cell] : deductions_by_parent_) {
       (void)parent;
-      out.vector_size_bytes += cell.sources.size() * sizeof(deductions::Deduction);
-      out.vector_capacity_bytes += cell.sources.capacity() * sizeof(deductions::Deduction);
+      out.vector_size_bytes += cell.sources.size() * sizeof(CompactSource);
+      out.vector_capacity_bytes += cell.sources.capacity() * sizeof(CompactSource);
     }
     out.add(hash_vector_memory("", parent_starts_by_column_));
     out.add(vector_memory("", parent_starts_));
@@ -155,44 +181,59 @@ class VRetainedAgenda {
   }
 
  private:
+  template <grammar::RuleId Rule>
   void append_generated(const deductions::ItemKey &parent,
-                        grammar::RuleId rule,
                         const deductions::ItemKey *required_child,
                         Context &ctx) {
-    if (rule == grammar::RuleId::V_INTERNAL && required_child != nullptr) {
+    static_assert(Rule == grammar::RuleId::V_HAIRPIN ||
+                  Rule == grammar::RuleId::V_INTERNAL || Rule == grammar::RuleId::V_VM);
+    grammar::RuleSplit split{};
+    if constexpr (Rule == grammar::RuleId::V_INTERNAL) {
       // One (parent, child) probe: test the split directly instead of
       // regenerating every internal loop of the parent (O(L^2) per probe).
-      if (deductions::exact_v_internal_split_allows(
-              parent, required_child->i, required_child->j, ctx)) {
-        grammar::RuleSplit split{};
-        split.k = required_child->i;
-        split.l = required_child->j;
-        auto source = deductions::expand_basic_rule<grammar::RuleId::V_INTERNAL>(
-            parent, split);
-        if (deductions::is_valid(source))
-          append_source(parent, std::move(source), required_child);
-      }
-      return;
+      if (required_child == nullptr || !deductions::exact_v_internal_split_allows(
+              parent, required_child->i, required_child->j, ctx)) return;
+      split.k = required_child->i;
+      split.l = required_child->j;
+    } else if constexpr (Rule == grammar::RuleId::V_HAIRPIN) {
+      if (!deductions::exact_v_hairpin_allows(ctx, parent.i, parent.j)) return;
+    } else {
+      if (!deductions::exact_v_pairing_state_allows(ctx, parent.i, parent.j)) return;
     }
-    for (auto source : deductions::generate_exact_basic_deductions(parent, rule, ctx))
-      append_source(parent, std::move(source), required_child);
-  }
-
-  void append_source(const deductions::ItemKey &parent,
-                     deductions::Deduction source,
-                     const deductions::ItemKey *required_child) {
+    // Validate the same shared expansion before queuing it, including the
+    // required child's complete identity. No full Deduction crosses the
+    // append boundary or survives in the future-column queue.
+    const auto source = deductions::expand_basic_rule<Rule>(parent, split);
+    if (!deductions::is_valid(source)) return;
     if (required_child != nullptr &&
         (source.child_count != 1 ||
          !deductions::ItemKeyEq{}(source.children[0].item, *required_child))) return;
+    append_source(parent, CompactSource{Rule, split.k, split.l});
+  }
+
+  struct CompactSource {
+    grammar::RuleId rule;
+    int k = -1;
+    int l = -1;
+  };
+
+  static std::uint64_t parent_key(cand_pos_t i, cand_pos_t j) {
+    static_assert(std::numeric_limits<cand_pos_t>::digits <= 32,
+                  "packed V parent coordinates require at most 32 bits");
+    return (static_cast<std::uint64_t>(static_cast<std::uint32_t>(i)) << 32) |
+        static_cast<std::uint32_t>(j);
+  }
+
+  void append_source(const deductions::ItemKey &parent, CompactSource source) {
     const auto rule = source.rule;
-    auto [found, inserted] = deductions_by_parent_.try_emplace(parent);
+    auto [found, inserted] = deductions_by_parent_.try_emplace(parent_key(parent.i, parent.j));
     auto &cell = found->second;
     if (rule == grammar::RuleId::V_INTERNAL) {
       // The shared split guard bounds each wing by MAXLOOP. Keep the vector's
       // first-arrival order, but test repeated (k,l) in constant space/time
       // per queued parent instead of rescanning its accumulated sources.
-      const auto left = source.split.k - parent.i - 1;
-      const auto right = parent.j - source.split.l - 1;
+      const auto left = source.k - parent.i - 1;
+      const auto right = parent.j - source.l - 1;
       if (left < 0 || left > MAXLOOP || right < 0 || right > MAXLOOP)
         throw std::logic_error("V internal source exceeds the shared loop window");
       const auto slot = static_cast<std::size_t>(left) * loop_width + right;
@@ -201,8 +242,7 @@ class VRetainedAgenda {
     } else {
       const bool duplicate = std::any_of(
           cell.sources.begin(), cell.sources.end(), [&](const auto &old) {
-            return old.rule == source.rule && old.split.k == source.split.k &&
-                   old.split.l == source.split.l;
+            return old.rule == source.rule && old.k == source.k && old.l == source.l;
           });
       if (duplicate) return;
     }
@@ -225,17 +265,13 @@ class VRetainedAgenda {
 
   static constexpr std::size_t loop_width = MAXLOOP + 1;
   struct ParentSources {
-    std::vector<deductions::Deduction> sources;
+    std::vector<CompactSource> sources;
     // Released together with the existing parent source vector in take_for.
     std::bitset<loop_width * loop_width> internal_splits;
   };
   cand_pos_t column_ = -1;
   VRetainedAgendaStats stats_{};
-  std::unordered_map<deductions::ItemKey,
-                     ParentSources,
-                     deductions::ItemKeyHash,
-                     deductions::ItemKeyEq>
-      deductions_by_parent_;
+  std::unordered_map<std::uint64_t, ParentSources> deductions_by_parent_;
   std::unordered_map<cand_pos_t, std::vector<cand_pos_t>>
       parent_starts_by_column_;
   std::vector<cand_pos_t> parent_starts_;

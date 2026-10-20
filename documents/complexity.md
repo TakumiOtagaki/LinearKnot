@@ -47,6 +47,17 @@ sorting all historical candidates. Parent groups use bounded sorts and
 ordered merges. Consumed histories and column scratch are released.
 Thus O(nb + E_d + Delta b + b^2) = O(nb) under the stated assumptions.
 
+The numeric chart's optional lookup index adds O(n+L) space for L live
+primary keys: O(n) row headers and geometrically sized open-addressed rows.
+Rows shrink after erasure and release their slots when empty, so old
+candidate peaks do not accumulate into a dense n-by-n allocation. The
+canonical sparse map remains the source of presence and iteration order.
+Queued V sources store only their rule and split coordinates. Bounded
+completion maxima use an indexed heap with O(log(b+2)) updates; querying
+immutable sorted alpha rows costs O(log(b+2)). These changes preserve the
+budgets above. An optional sorted diagnostic view has a separate
+O(b log(b+2)) observation cost per changed pool.
+
 For standard forcing width beta = max(1000,b) and pilot width p = ceil(b^q),
 q in {1/2,2/3}, the sequential phase budgets are
 

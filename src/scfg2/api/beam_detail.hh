@@ -23,6 +23,7 @@ inline replay::WFinalVpWmbpOnlineWidths beam_widths(const BeamConfig &config) {
   widths.max_case3_ancestor_depth = config.max_case3_ancestor_depth;
   widths.memory_observer = config.memory_observer;
   widths.memory_column_interval = config.memory_column_interval;
+  widths.numeric_lookup_index = true;
   return widths;
 }
 

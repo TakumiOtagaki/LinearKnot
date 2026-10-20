@@ -10,11 +10,11 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
-#include <set>
 #include <stdexcept>
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace cparty::scfg2::beam::outer_detail {
@@ -73,7 +73,13 @@ inline void update_outer(Outer &out, const Item &child, double value,
 // A max pool can discard subthreshold partial values: later larger offers
 // suffice for re-entry. A sum pool could not forget those earlier summands.
 struct MaxPool {
-  struct Entry { double value; Outer::Link link; bool mandatory; };
+  static constexpr std::size_t no_heap_index = std::numeric_limits<std::size_t>::max();
+  struct Entry {
+    double value;
+    Outer::Link link;
+    bool mandatory;
+    std::size_t heap_index = no_heap_index;
+  };
   struct Rank { Item key; double value; };
   struct Better {
     bool operator()(const Rank &a, const Rank &b) const {
@@ -83,18 +89,149 @@ struct MaxPool {
   };
   using Entries = std::unordered_map<Item, Entry, sc::deductions::ItemKeyHash,
                                     sc::deductions::ItemKeyEq>;
+
+  // A worst-first indexed heap replaces one allocation per rank-tree update.
+  // Entry pointers survive unordered_map rehashes. Only pool copy/move needs
+  // to rebind them, and swaps update their indices without another map probe.
+  class NovelRanks {
+   public:
+    using const_iterator = std::vector<Rank>::const_iterator;
+    std::size_t size() const { return heap_.size(); }
+    bool empty() const { return heap_.empty(); }
+    std::size_t capacity() const { return heap_.capacity(); }
+    std::size_t view_capacity() const { return view_.capacity(); }
+
+    // Preserve the diagnostic sorted-range API. Production asks only for
+    // size, cutoff and clear, so it never builds this view. Any rank mutation
+    // invalidates view iterators; repeated observations reuse the same view.
+    const_iterator begin() const { return ranked().begin(); }
+    const_iterator end() const { return ranked().end(); }
+    void clear() {
+      // Production moves entries to its completed-parent map first. Do not
+      // dereference the old pointers here; release both histories entirely.
+      std::vector<Cell>{}.swap(heap_);
+      std::vector<Rank>{}.swap(view_);
+      view_valid_ = true;
+    }
+
+   private:
+    friend struct MaxPool;
+    struct Cell { Rank rank; Entry *entry; };
+    const Rank &worst() const { return heap_.front().rank; }
+    void swap_cells(std::size_t a, std::size_t b) {
+      std::swap(heap_[a], heap_[b]);
+      heap_[a].entry->heap_index = a;
+      heap_[b].entry->heap_index = b;
+    }
+    void sift_up(std::size_t position) {
+      while (position) {
+        const auto parent = (position - 1) / 2;
+        if (!Better{}(heap_[parent].rank, heap_[position].rank)) break;
+        swap_cells(parent, position);
+        position = parent;
+      }
+    }
+    void sift_down(std::size_t position) {
+      while (position < heap_.size() / 2) {
+        auto child = position * 2 + 1;
+        if (child + 1 < heap_.size() &&
+            Better{}(heap_[child].rank, heap_[child + 1].rank)) ++child;
+        if (!Better{}(heap_[position].rank, heap_[child].rank)) break;
+        swap_cells(position, child);
+        position = child;
+      }
+    }
+    void insert(const Rank &rank, Entry &entry) {
+      const auto position = heap_.size();
+      heap_.push_back({rank, &entry});
+      entry.heap_index = position;
+      sift_up(position);
+      view_valid_ = false;
+    }
+    void improve(Entry &entry, double value) {
+      const auto position = entry.heap_index;
+      heap_[position].rank.value = value;
+      // Scores only increase. A better rank moves away from the worst root.
+      sift_down(position);
+      view_valid_ = false;
+    }
+    void pop_erased_worst() {
+      // The canonical entry has already been erased, matching the original
+      // map mutation order. Never touch its now-dangling Entry pointer.
+      if (heap_.size() == 1) heap_.pop_back();
+      else {
+        heap_.front() = heap_.back();
+        heap_.pop_back();
+        heap_.front().entry->heap_index = 0;
+        sift_down(0);
+      }
+      view_valid_ = false;
+    }
+    void rebind(Entries &entries) {
+      for (std::size_t p = 0; p < heap_.size(); ++p) {
+        auto &entry = entries.at(heap_[p].rank.key);
+        heap_[p].entry = &entry;
+        entry.heap_index = p;
+      }
+    }
+    const std::vector<Rank> &ranked() const {
+      if (!view_valid_) {
+        view_.clear();
+        view_.reserve(heap_.size());
+        for (const auto &cell : heap_) view_.push_back(cell.rank);
+        std::sort(view_.begin(), view_.end(), Better{});
+        view_valid_ = true;
+      }
+      return view_;
+    }
+    std::vector<Cell> heap_;
+    mutable std::vector<Rank> view_;
+    mutable bool view_valid_ = true;
+  };
+
   Entries entries;
-  std::set<Rank, Better> novel;
+  NovelRanks novel;
   std::size_t evicted = 0;
+
+  MaxPool() = default;
+  MaxPool(const MaxPool &other)
+      : entries(other.entries), novel(other.novel), evicted(other.evicted) {
+    novel.rebind(entries);
+  }
+  MaxPool &operator=(const MaxPool &other) {
+    if (this != &other) {
+      entries = other.entries;
+      novel = other.novel;
+      evicted = other.evicted;
+      novel.rebind(entries);
+    }
+    return *this;
+  }
+  MaxPool(MaxPool &&other)
+      : entries(std::move(other.entries)), novel(std::move(other.novel)),
+        evicted(other.evicted) {
+    novel.rebind(entries);
+    other.novel.clear();
+  }
+  MaxPool &operator=(MaxPool &&other) {
+    if (this != &other) {
+      entries = std::move(other.entries);
+      novel = std::move(other.novel);
+      evicted = other.evicted;
+      novel.rebind(entries);
+      other.novel.clear();
+    }
+    return *this;
+  }
 
   void offer(const Item &key, double value, const Outer::Link &link,
               bool mandatory, std::size_t width, bool prefilter = false) {
     const auto old = entries.find(key);
     // A new max candidate below the full frontier would be inserted and
     // immediately evicted. Preserve the tie rule and eviction count while
-    // avoiding two node allocations and their hash/tree mutations.
+    // avoiding a map-node allocation and the matching heap update.
     if (prefilter && old == entries.end() && !mandatory && novel.size() == width &&
-        (width == 0 || !Better{}({key, value}, *std::prev(novel.end())))) {
+        (width == 0 || !Better{}({key, value}, novel.worst()))) {
       ++evicted;
       return;
     }
@@ -103,22 +240,23 @@ struct MaxPool {
       if (value < old->second.value ||
           (value == old->second.value && !better_link(link, old->second.link))) return;
       // An equal-score predecessor update leaves the rank unchanged. Avoid
-      // erasing/reallocating its tree node just to replace this link.
+      // reordering its heap cell just to replace this link.
       if (value == old->second.value) {
         old->second.link = link;
         return;
       }
-      if (!mandatory) novel.erase({key, old->second.value});
-      old->second = Entry{value, link, mandatory};
+      const auto heap_index = old->second.heap_index;
+      old->second = Entry{value, link, mandatory, heap_index};
+      if (!mandatory) novel.improve(old->second, value);
     } else {
-      entries.insert_or_assign(key, Entry{value, link, mandatory});
+      const auto inserted = entries.insert_or_assign(key, Entry{value, link, mandatory});
+      if (!mandatory) novel.insert({key, value}, inserted.first->second);
     }
     if (!mandatory) {
-      novel.insert({key, value});
       if (novel.size() > width) {
-        const auto worst = std::prev(novel.end());
-        entries.erase(worst->key);
-        novel.erase(worst);
+        const auto worst = novel.worst();
+        entries.erase(worst.key);
+        novel.pop_erased_worst();
         ++evicted;
       }
     }

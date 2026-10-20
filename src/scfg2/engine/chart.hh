@@ -2,10 +2,12 @@
 #define CPARTY_SCFG2_ENGINE_CHART_HH
 
 #include "scfg2/deductions/item_key.hh"
+#include "scfg2/engine/primary_lookup_index.hh"
 #include "scfg2/semirings/value_boundary.hh"
 
 #include <unordered_map>
 #include <limits>
+#include <new>
 #include <optional>
 #include <stdexcept>
 #include <type_traits>
@@ -25,36 +27,69 @@ class Chart {
   // An opt-in predicate may discard semiring zero entries. The default
   // preserves exact callers' historical contains()/zero-entry contract.
   explicit Chart(Value default_value, discard_fn discard = nullptr,
-                 cand_pos_t dense_length = 0)
+                 cand_pos_t dense_length = 0, cand_pos_t primary_lookup_length = 0)
       : default_value_(default_value), discard_(discard) {
     if (dense_length < 0) throw std::invalid_argument("negative dense chart length");
+    if (primary_lookup_length < 0) throw std::invalid_argument("negative primary lookup length");
+    if (dense_length && primary_lookup_length)
+      throw std::invalid_argument("dense storage and primary lookup are mutually exclusive");
     if (dense_length) dense_.emplace(dense_length, default_value);
+    if constexpr (std::is_same_v<Value, double>) {
+      if (primary_lookup_length) {
+        try { primary_lookup_.emplace(primary_lookup_length); }
+        catch (const std::bad_alloc &) {}
+        catch (const std::length_error &) {}
+      }
+    } else if (primary_lookup_length) {
+      throw std::invalid_argument("primary lookup requires double values");
+    }
   }
 
-  Chart(const Chart &) = default;
-  Chart &operator=(const Chart &) = default;
+  Chart(const Chart &other)
+      : default_value_(other.default_value_), discard_(other.discard_),
+        values_(other.values_), dense_(other.dense_), materialized_(other.materialized_) {
+    copy_primary_lookup(other);
+  }
+  Chart &operator=(const Chart &other) {
+    if (this == &other) return *this;
+    primary_lookup_.reset();
+    default_value_ = other.default_value_;
+    discard_ = other.discard_;
+    values_ = other.values_;
+    dense_ = other.dense_;
+    materialized_ = other.materialized_;
+    copy_primary_lookup(other);
+    return *this;
+  }
   Chart(Chart &&other)
       : default_value_(other.default_value_), discard_(other.discard_),
         values_(std::move(other.values_)), dense_(std::move(other.dense_)),
-        materialized_(std::move(other.materialized_)) {
+        materialized_(std::move(other.materialized_)),
+        primary_lookup_(std::move(other.primary_lookup_)) {
     other.dense_.reset();
     other.materialized_.reset();
+    other.primary_lookup_.reset();
   }
   Chart &operator=(Chart &&other) {
     if (this == &other) return *this;
+    primary_lookup_.reset();
     default_value_ = other.default_value_;
     discard_ = other.discard_;
     values_ = std::move(other.values_);
     dense_ = std::move(other.dense_);
     materialized_ = std::move(other.materialized_);
+    primary_lookup_ = std::move(other.primary_lookup_);
     other.dense_.reset();
     other.materialized_.reset();
+    other.primary_lookup_.reset();
     return *this;
   }
 
   // Exact numeric runs opt into primary-span triangles. BE and noncanonical
   // keys keep their full sparse identity; default/beam charts remain sparse.
   cand_pos_t dense_length() const { return dense_ ? dense_->n : 0; }
+  cand_pos_t primary_lookup_length() const { return primary_lookup_ ? primary_lookup_->length() : 0; }
+  std::size_t primary_lookup_bytes() const { return primary_lookup_ ? primary_lookup_->memory_bytes() : 0; }
   std::size_t size() const { return values_.size() + (dense_ ? dense_->count : 0); }
 
   Value get(const key_type &key) const {
@@ -63,6 +98,10 @@ class Chart {
       // needed for contains()/iteration, but reading it adds no information.
       if constexpr (std::is_same_v<Value, double>) return dense_->values[*index];
       else return dense_->present[*index] ? dense_->values[*index] : default_value_;
+    }
+    if constexpr (std::is_same_v<Value, double>) {
+      if (primary_lookup_)
+        if (const auto value = primary_lookup_->get(key, default_value_)) return *value;
     }
     const auto it = values_.find(key);
     if (it == values_.end()) {
@@ -82,6 +121,7 @@ class Chart {
       } else {
         values_.erase(key);
       }
+      update_primary_lookup(key, default_value_, false);
       if (materialized_) materialized_->erase(key);
     } else {
       // A representation boundary must run once, including when the legacy
@@ -94,6 +134,7 @@ class Chart {
       } else {
         values_[key] = value;
       }
+      update_primary_lookup(key, value, true);
       if (materialized_) (*materialized_)[key] = value;
     }
   }
@@ -137,6 +178,27 @@ class Chart {
   }
 
  private:
+  // The canonical map retains its mutation and iteration order. This optional
+  // numeric index only mirrors checkpointed values. If its allocation fails,
+  // disable it before any subsequent lookup can observe stale data.
+  void update_primary_lookup(const key_type &key, const Value &value, bool present) {
+    if constexpr (std::is_same_v<Value, double>) {
+      if (!primary_lookup_) return;
+      try {
+        if (present) primary_lookup_->set(key, value);
+        else primary_lookup_->erase(key);
+      } catch (const std::bad_alloc &) { primary_lookup_.reset(); }
+        catch (const std::length_error &) { primary_lookup_.reset(); }
+    }
+  }
+
+  void copy_primary_lookup(const Chart &other) {
+    if (!other.primary_lookup_) return;
+    try { primary_lookup_.emplace(*other.primary_lookup_); }
+    catch (const std::bad_alloc &) {}
+    catch (const std::length_error &) {}
+  }
+
   static constexpr std::size_t primary_families =
       static_cast<std::size_t>(grammar::NonTerminal::BE);
   struct DensePrimary {
@@ -171,6 +233,7 @@ class Chart {
   map_type values_;
   std::optional<DensePrimary> dense_;
   mutable std::optional<map_type> materialized_;
+  std::optional<PrimaryLookupIndex> primary_lookup_;
 };
 
 }  // namespace cparty::scfg2::engine

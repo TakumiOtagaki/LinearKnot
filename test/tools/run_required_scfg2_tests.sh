@@ -70,6 +70,11 @@ targets=(
   scfg2_right_boundary_frontier_test
   scfg2_beam_scaffold_forcing_test
   scfg2_pilot_guided_inside_test
+  scfg2_bounded_outer_alpha_lookup_test
+  scfg2_outer_max_pool_test
+  scfg2_primary_lookup_index_test
+  scfg2_numeric_primary_lookup_test
+  scfg2_beam_numeric_lookup_test
   scfg2_outer_ranked_outside_test
   scfg2_outer_ranking_api_test
   scfg2_exact_api_test

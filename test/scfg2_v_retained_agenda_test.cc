@@ -20,6 +20,43 @@ using Source = deductions::Deduction;
 void require(bool ok, const char *message) {
   if (!ok) throw std::runtime_error(message);
 }
+bool same_source(const Source &a, const Source &b) {
+  if (!deductions::ItemKeyEq{}(a.parent, b.parent) ||
+      std::tie(a.rule, a.split.k, a.split.l, a.split.p, a.split.q, a.child_count) !=
+      std::tie(b.rule, b.split.k, b.split.l, b.split.p, b.split.q, b.child_count)) return false;
+  for (std::size_t c = 0; c < a.children.size(); ++c)
+    if (!deductions::ItemKeyEq{}(a.children[c].item, b.children[c].item)) return false;
+  return true;
+}
+template <class Agenda>
+void absent_aliases(Agenda &agenda, const Key &parent) {
+  const auto before = agenda.pending_parent_count();
+  for (const auto &other : std::vector<Key>{
+           {grammar::NonTerminal::W, parent.i, parent.j, -1, -1},
+           {grammar::NonTerminal::BE, parent.i, parent.j, -1, -1},
+           {grammar::NonTerminal::V, parent.i, parent.j, 0, -1},
+           {grammar::NonTerminal::V, parent.i, parent.j, -1, 0},
+           {grammar::NonTerminal::V, 0, parent.j, -1, -1},
+           {grammar::NonTerminal::V, parent.j + 1, parent.j, -1, -1},
+           {grammar::NonTerminal::V, parent.i, -1, -1, -1}})
+    require(agenda.take_for(other).empty(), "packed V parent index accepted a different full key");
+  require(agenda.pending_parent_count() == before, "absent V alias consumed a queued parent");
+}
+
+// Count the unchanged rectangular event-probe protocol in terms of wing
+// lengths, independently of the production parent-coordinate traversal.
+template <class Context>
+std::size_t internal_probes(cand_pos_t j, const std::vector<cand_pos_t> &starts,
+                            cand_pos_t n, const Context &ctx) {
+  std::size_t total = 0;
+  for (const auto i : starts) {
+    if (i <= 1) continue;
+    const auto max_left = std::min<cand_pos_t>({MAXLOOP, ctx.unpaired_prefix(i - 1), i - 2});
+    for (cand_pos_t left = 0; left <= max_left; ++left)
+      total += std::max<cand_pos_t>(0, std::min<cand_pos_t>(n - j, MAXLOOP + 1 - left));
+  }
+  return total;
+}
 
 // Independent full-parent enumeration supplies support. First child-arrival
 // order supplies source order; no offset bitmap or forward window is reused.
@@ -33,6 +70,7 @@ void repeated_internal_events() {
   using Pair = std::pair<cand_pos_t, cand_pos_t>;
   std::map<Pair, std::size_t> arrival;
   const cand_pos_t n = sequence.size();
+  std::size_t probes = 0;
   for (cand_pos_t j = 6; j < n; ++j) {
     std::vector<cand_pos_t> starts;
     for (cand_pos_t i = j - ctx.turn() - 1; i >= 1; --i) {
@@ -42,8 +80,10 @@ void repeated_internal_events() {
     }
     if (starts.empty()) continue;
     starts.push_back(starts.front());
+    probes += internal_probes(j, starts, n, ctx);
     agenda.observe_committed_v_column(j, starts, n, ctx);
     std::reverse(starts.begin(), starts.end());
+    probes += internal_probes(j, starts, n, ctx);
     agenda.observe_committed_v_column(j, starts, n, ctx);
   }
   std::size_t internals = 0, hairpins = 0, vm = 0;
@@ -78,18 +118,13 @@ void repeated_internal_events() {
         expected.insert(expected.end(), mv.begin(), mv.end());
       }
       if (!expected.empty()) expected_starts.push_back(i);
+      absent_aliases(agenda, parent);
       const auto actual = agenda.take_for(parent);
       require(actual.size() == expected.size(), "V agenda source support changed under repeated arrivals");
-      for (std::size_t k = 0; k < actual.size(); ++k) {
-        const auto &a = actual[k]; const auto &b = expected[k];
-        require(std::tie(a.rule, a.split.k, a.split.l, a.split.p, a.split.q) ==
-                std::tie(b.rule, b.split.k, b.split.l, b.split.p, b.split.q),
-                "V agenda changed first-arrival source order");
-        require(a.child_count == b.child_count, "V agenda child arity changed");
-        for (std::size_t c = 0; c < a.child_count; ++c)
-          require(deductions::ItemKeyEq{}(a.children[c].item, b.children[c].item),
-                  "V agenda child identity changed");
-      }
+      for (std::size_t k = 0; k < actual.size(); ++k)
+        require(same_source(actual[k], expected[k]),
+                "V agenda changed complete source fields or first-arrival order");
+      require(agenda.take_for(parent).empty(), "V source buffer was not consumed once");
     }
     require(agenda.parent_starts() == expected_starts, "V agenda parent order changed");
   }
@@ -97,6 +132,10 @@ void repeated_internal_events() {
   require(agenda.stats().internal_sources == internals &&
           agenda.stats().hairpin_sources == hairpins && agenda.stats().vm_sources == vm,
           "V agenda source counts changed under repeated arrivals");
+  require(agenda.stats().internal_parent_probes == probes &&
+              agenda.stats().hairpin_parent_probes == std::size_t(n) * (n + 1) / 2 &&
+              agenda.stats().vm_parent_probes == 3 * std::size_t(n),
+          "V agenda changed the event-probe protocol");
   std::cout << "repeated_v_events=" << internals << " loop_cap_corners=ok\n";
 }
 
@@ -124,9 +163,7 @@ void skipped_parent_lifetime() {
       const auto a = history.take_for(parent), b = stream.take_for(parent);
       require(a.size() == b.size(), "V retirement changed future source support");
       for (std::size_t k = 0; k < a.size(); ++k) {
-        require(std::tie(a[k].rule, a[k].split.k, a[k].split.l) ==
-                    std::tie(b[k].rule, b[k].split.k, b[k].split.l),
-                "V retirement changed future source order");
+        require(same_source(a[k], b[k]), "V retirement changed complete future source fields/order");
         ++compared;
       }
     }
@@ -147,12 +184,118 @@ void skipped_parent_lifetime() {
               stream.pending_parent_count() == 0,
           "V skipped-parent lifetime witness did not exercise expired candidates");
 }
+
+void nonempty_scaffold_streams() {
+  const std::string sequence = "GGUUUUCCGGGUACCUGGUGGCAGGUCACGUUUAUGCCGGCUGCUUUAUU";
+  const std::string branching = "....(...)((....)..)((.(.((...))))(.(....)((...))))";
+  auto forbidden = branching;
+  forbidden[0] = 'x';
+  forbidden[forbidden.find('.', forbidden.size() / 2)] = 'x';
+  forbidden[forbidden.rfind('.')] = 'x';
+  std::size_t compared = 0, internals = 0, cap_exceptions = 0;
+  for (const auto &scaffold : {branching, forbidden}) {
+    weights::RuntimeSnapshot owner(sequence, scaffold);
+    for (const auto policy : {WmbClosurePolicy::RequireWeakClosure,
+                              WmbClosurePolicy::LegacyCompatible}) {
+      replay::WFinalLogWeightContext ctx(owner, policy);
+      std::vector<Source> owned, owned_expected;
+      {
+        beam::VRetainedAgenda<replay::WFinalLogWeightContext> agenda;
+        using Pair = std::pair<cand_pos_t, cand_pos_t>;
+        std::map<Pair, std::size_t> arrival;
+        const cand_pos_t n = sequence.size();
+        constexpr cand_pos_t cap = 3;
+        std::size_t probes = 0, hairpin_probes = 0, expected_internals = 0;
+        std::size_t expected_hairpins = 0, expected_vm = 0;
+        for (cand_pos_t j = 1; j <= n; ++j) {
+          const std::vector<cand_pos_t> vm_starts{1, 1, 2};
+          agenda.build_column(j, vm_starts, cap, ctx);
+          const auto min_hairpin = std::max<cand_pos_t>(1, j - cap - 1);
+          hairpin_probes += j - min_hairpin + 1;
+          const auto scaffold_i = ctx.pair_partner(j);
+          if (scaffold_i > 0 && scaffold_i < min_hairpin) ++hairpin_probes;
+          std::vector<cand_pos_t> expected_starts, retained;
+          for (cand_pos_t i = j; i >= 1; --i) {
+            const Key parent{grammar::NonTerminal::V, i, j, -1, -1};
+            auto expected = deductions::generate_exact_basic_deductions(parent, Rule::V_INTERNAL, ctx);
+            expected.erase(std::remove_if(expected.begin(), expected.end(), [&](const Source &source) {
+              return !arrival.count({source.split.k, source.split.l});
+            }), expected.end());
+            std::sort(expected.begin(), expected.end(), [&](const Source &a, const Source &b) {
+              return arrival.at({a.split.k, a.split.l}) < arrival.at({b.split.k, b.split.l});
+            });
+            expected_internals += expected.size();
+            if (i >= min_hairpin || i == scaffold_i) {
+              auto hp = deductions::generate_exact_basic_deductions(parent, Rule::V_HAIRPIN, ctx);
+              expected_hairpins += hp.size();
+              cap_exceptions += !hp.empty() && i < min_hairpin;
+              expected.insert(expected.end(), hp.begin(), hp.end());
+            }
+            if (i == 1 || i == 2) {
+              auto vm = deductions::generate_exact_basic_deductions(parent, Rule::V_VM, ctx);
+              expected_vm += vm.size();
+              expected.insert(expected.end(), vm.begin(), vm.end());
+            }
+            if (!expected.empty()) {
+              expected_starts.push_back(i);
+              absent_aliases(agenda, parent);
+              if (j - i - 1 >= ctx.turn() && ctx.can_pair(i, j) && retained.size() < 4)
+                retained.push_back(i);
+            }
+            const auto actual = agenda.take_for(parent);
+            require(actual.size() == expected.size(), "nonempty V source support changed");
+            for (std::size_t c = 0; c < actual.size(); ++c) {
+              require(same_source(actual[c], expected[c]),
+                      "nonempty V complete source fields/order differ from full generator");
+              ++compared;
+            }
+            if (owned.empty() && !actual.empty()) { owned = actual; owned_expected = expected; }
+          }
+          require(agenda.parent_starts() == expected_starts,
+                  "nonempty V parent frontier order changed");
+          if (j % 2) std::reverse(retained.begin(), retained.end());
+          if (!retained.empty()) retained.push_back(retained.front());
+          for (const auto i : retained) arrival.emplace(Pair{i, j}, arrival.size());
+          probes += internal_probes(j, retained, n, ctx);
+          agenda.observe_committed_v_column(j, retained, n, ctx);
+          std::reverse(retained.begin(), retained.end());
+          probes += internal_probes(j, retained, n, ctx);
+          agenda.observe_committed_v_column(j, retained, n, ctx);
+          agenda.release_column();
+          agenda.release_column();
+          require(agenda.pending_column_count() <= MAXLOOP + 1,
+                  "nonempty compact V queue exceeded its future-column window");
+        }
+        require(agenda.stats().internal_sources == expected_internals &&
+                    agenda.stats().hairpin_sources == expected_hairpins &&
+                    agenda.stats().vm_sources == expected_vm &&
+                    agenda.stats().internal_parent_probes == probes &&
+                    agenda.stats().hairpin_parent_probes == hairpin_probes &&
+                    agenda.stats().vm_parent_probes == 3 * std::size_t(n),
+                "nonempty compact V work counts changed");
+        require(agenda.pending_parent_count() == 0 && agenda.pending_column_count() == 0 &&
+                    agenda.memory_snapshot("v").vector_size_bytes == 0,
+                "nonempty compact V sources survived release");
+        internals += expected_internals;
+      }
+      require(!owned.empty() && owned.size() == owned_expected.size(),
+              "V full-buffer ownership witness is vacuous");
+      for (std::size_t c = 0; c < owned.size(); ++c)
+        require(same_source(owned[c], owned_expected[c]),
+                "returned V source buffer depended on the destroyed agenda");
+    }
+  }
+  require(compared > 0 && internals > 0 && cap_exceptions > 0,
+          "nonempty V source/internal/scaffold-cap coverage is vacuous");
+  std::cout << "nonempty_v_sources=" << compared << " internals=" << internals << '\n';
+}
 } // namespace
 
 int main() {
   using namespace cparty::scfg2;
   setenv("CPARTY_FIXED_ENERGY_PARAM_FILE", "params/rna_Turner04.par", 1);
   skipped_parent_lifetime();
+  nonempty_scaffold_streams();
   std::string sequence;
   for (int pos = 0; pos < 64; ++pos) {
     sequence.push_back((pos % 2) == 0 ? 'G' : 'C');

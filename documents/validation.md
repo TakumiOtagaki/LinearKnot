@@ -32,6 +32,20 @@ sampling or BPP are not interchangeable semantic references for inside.
 
 ## Focused regression witnesses
 
+- [Beam numeric lookup](../test/scfg2_beam_numeric_lookup_test.cc) compares
+  indexed and reference execution under both ranking and closure policies,
+  including full retained chart iteration, value bits, choices, ties and
+  work counts. Storage tests cover [row growth and deletion](../test/scfg2_primary_lookup_index_test.cc)
+  and [chart fallback and ownership](../test/scfg2_numeric_primary_lookup_test.cc),
+  including allocation failure after a canonical map update.
+- [Completion lookup](../test/scfg2_bounded_outer_alpha_lookup_test.cc) checks
+  full-key and absent-key values against the original alpha map.
+  [Bounded maxima](../test/scfg2_outer_max_pool_test.cc) compare the heap
+  against a frozen set implementation after each offer, including map
+  iteration/buckets, links, rank ties, eviction and copy/move lifetimes.
+  [V agenda](../test/scfg2_v_retained_agenda_test.cc) checks complete expanded
+  deductions and arrival order against shared generation, with nonempty
+  scaffolds, excluded positions, duplicate sources and column release.
 - [Numeric exact execution](../test/scfg2_exact_numeric_execution_test.cc)
   compares reference execution with dense storage, zero-child cutoff and
   unused-VM omission, split selection and candidate-buffer reuse, separately

@@ -56,6 +56,7 @@ PreparedRanking prepare_ranking(
   pilot_widths.memory_observer = out.widths.memory_observer;
   pilot_widths.memory_column_interval = out.widths.memory_column_interval;
   pilot_widths.memory_phase = MemoryPhase::Pilot;
+  pilot_widths.numeric_lookup_index = out.widths.numeric_lookup_index;
   const auto pilot_start = Clock::now();
   auto pilot = replay::run_w_final_vp_wmbp_online<Sum>(ctx, n, pilot_widths);
   out.pilot_seconds = seconds(pilot_start);
@@ -66,7 +67,8 @@ PreparedRanking prepare_ranking(
   // Finalized scores suffice for ranking. Validate predecessor links as their
   // targets finalize instead of retaining a second global link dictionary.
   auto guide = bounded_outer<Context, true, false>(pilot.chart, Item{NT::W, 1, n, -1, -1}, ctx,
-                             out.pilot_width, 4 * out.pilot_width);
+                             out.pilot_width, 4 * out.pilot_width, false, false,
+                             out.widths.numeric_lookup_index);
   if (out.widths.memory_observer)
     out.widths.memory_observer(chart_memory(MemoryPhase::Outer, "guide_end",
         out.pilot_width, n, guide.outer.values, true));

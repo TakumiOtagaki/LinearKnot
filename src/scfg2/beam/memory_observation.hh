@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <functional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace cparty::scfg2::beam {
@@ -105,6 +106,12 @@ MemoryObservation chart_memory(MemoryPhase phase, const char *event,
   out.column = column;
   out.chart_items = chart.values().size();
   out.containers.push_back(hash_memory("chart", chart.values()));
+  if (const auto bytes = chart.primary_lookup_bytes()) {
+    ContainerMemory lookup;
+    lookup.name = "chart_primary_lookup";
+    lookup.vector_capacity_bytes = bytes;
+    out.containers.push_back(std::move(lookup));
+  }
   if (families) {
     const auto count = static_cast<std::size_t>(grammar::NonTerminal::BE) + 1;
     out.families.resize(count);

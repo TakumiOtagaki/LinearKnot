@@ -137,6 +137,20 @@ class Proposals {
     static const std::vector<Record> empty;
     return end >= 1 && end <= n ? right[end][static_cast<std::size_t>(nt)] : empty;
   }
+  // The guide alpha records are immutable after construction. Reuse the
+  // sorted proposal columns for point reads instead of probing the duplicate
+  // global chart. Full keys distinguish BE and noncanonical primary records.
+  double get_alpha(const Item &key) const {
+    const auto family = static_cast<std::size_t>(key.nonterminal);
+    if (family >= families || key.j < 1 || key.j > n) return zero;
+    const auto &records = right[key.j][family];
+    const auto found = std::lower_bound(records.begin(), records.end(), key,
+        [](const Record &record, const Item &target) {
+          return less_key(record.key, target);
+        });
+    return found != records.end() && sc::deductions::ItemKeyEq{}(found->key, key)
+        ? found->alpha : zero;
+  }
   void from_right(std::vector<int> &out, NT nt, int end, int offset = 0) {
     for (const auto &r : column(nt, end)) out.push_back(r.key.i + offset);
   }
@@ -273,11 +287,12 @@ struct Result { Outer outer; Work work; };
 template <class Context, bool Optimize = true, bool TrackLinks = true>
 outer_detail::Result bounded_outer(const outer_detail::Chart &pilot, const outer_detail::Item &root,
     Context &ctx, std::size_t proposal_width, std::size_t frontier_width,
-    bool validate = false, bool profile = false) {
+    bool validate = false, bool profile = false, bool numeric_lookup_index = false) {
   using namespace outer_detail;
   const auto start = Clock::now();
   Result result;
   auto &out = result.outer;
+  if (numeric_lookup_index) out.values = Chart(zero, nullptr, 0, root.j);
   Proposals proposals(pilot, root.j, proposal_width, ctx, result.work);
   constexpr auto families = outer_probe_families;
   std::array<int, families> phase{};
@@ -298,6 +313,7 @@ outer_detail::Result bounded_outer(const outer_detail::Chart &pilot, const outer
   // The shared generator only reads these positions during this parent.
   // Reuse O(p) scratch capacity instead of allocating a new vector each time.
   std::vector<int> positions;
+  std::vector<sc::deductions::Deduction> ds;
   std::size_t validated_links = 0;
   if (profile) result.work.preparation_seconds = seconds(start);
   for (int g = static_cast<int>(pools.size()) - 1; g >= 0; --g) {
@@ -329,7 +345,8 @@ outer_detail::Result bounded_outer(const outer_detail::Chart &pilot, const outer
         result.work.proposal_seconds += std::chrono::duration<double>(now - stamp).count();
         stamp = now;
       }
-      const auto ds = sc::deductions::generate_exact_basic_deductions_for_item(parent, ctx, &positions);
+      ds.clear();
+      sc::deductions::append_exact_basic_deductions_for_item(ds, parent, ctx, &positions);
       if (profile) {
         const auto now = Clock::now();
         const double elapsed = std::chrono::duration<double>(now - stamp).count();
@@ -381,7 +398,7 @@ outer_detail::Result bounded_outer(const outer_detail::Chart &pilot, const outer
           std::size_t zeros = 0;
           for (std::size_t c = 0; c < d.child_count; ++c) {
             children[c] = child_item(d, c);
-            alphas[c] = proposals.alpha.get(children[c]);
+            alphas[c] = proposals.get_alpha(children[c]);
             ++result.work.child_alpha_lookups;
             if (alphas[c] == zero) ++zeros;
           }
@@ -408,12 +425,12 @@ outer_detail::Result bounded_outer(const outer_detail::Chart &pilot, const outer
             for (std::size_t k = 0; k < d.child_count; ++k)
               if (c != k) {
                 ++result.work.child_alpha_lookups;
-                edge += proposals.alpha.get(child_item(d, k));
+                edge += proposals.get_alpha(child_item(d, k));
               }
             if (edge == zero) continue;
             const auto child = child_item(d, c);
             ++result.work.child_alpha_lookups;
-            offer(d, child, edge, proposals.alpha.get(child) != zero);
+            offer(d, child, edge, proposals.get_alpha(child) != zero);
           }
         }
       }

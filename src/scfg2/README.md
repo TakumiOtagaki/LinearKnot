@@ -63,6 +63,24 @@ consumers, raw carrier observations and finite-beam retention keep their
 existing execution policy. Regenerated outside never applies the forward
 zero-product shortcut: a zero child can still receive a nonzero adjoint.
 
+Numeric finite-beam inside and stored MFE select a primary lookup index.
+The sparse chart remains authoritative for values, presence and iteration;
+the index mirrors checkpointed doubles in per-family, per-end rows. BE and
+noncanonical keys use the original full-key lookup. Rows shrink after
+pruning, and an index allocation failure falls back to the sparse chart.
+Scaffold forcing, the pilot and the completed numeric guide inherit the
+option; other semirings and derivation representations retain their
+original storage policy.
+
+The V agenda queues compact rule/split records in first-arrival order and
+expands them through the shared child schema before evaluation. Completion
+ranking reads the immutable sorted alpha rows and uses an indexed heap for
+bounded maxima, reusing a deduction buffer between fully generated parents.
+Its canonical map mutation order, score/key cutoff, equal
+score predecessor rule and mandatory-state ownership remain unchanged.
+These storage changes do not alter beam widths, geometry limits or retained
+states. The diagnostic sorted rank view is generated only when observed.
+
 The model, completed-WMB policy and decoding objectives are documented in
 [the model guide](../../documents/model.md). Resource assumptions and bounds
 are in [complexity](../../documents/complexity.md).

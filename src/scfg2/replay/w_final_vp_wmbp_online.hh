@@ -152,6 +152,9 @@ struct WFinalVpWmbpOnlineWidths {
   beam::MemoryObserver memory_observer = {};
   std::size_t memory_column_interval = 0;
   beam::MemoryPhase memory_phase = beam::MemoryPhase::Main;
+  // Numeric lookup acceleration only; the canonical chart and its iteration
+  // order remain authoritative for every consumer and retention decision.
+  bool numeric_lookup_index = false;
 
   static WFinalVpWmbpOnlineWidths vp_wmbp(std::size_t width) {
     WFinalVpWmbpOnlineWidths out;
@@ -312,10 +315,12 @@ run_w_final_vp_wmbp_online_impl(
     widths.memory_observer(start);
   }
   engine::AllLocalWeightModel<Context> weight(&ctx);
+  constexpr bool numeric_lookup = std::is_same_v<Semiring, semirings::LogSumExpSemiring> ||
+                                  std::is_same_v<Semiring, semirings::LogMaxSemiring>;
   engine::Chart<typename Semiring::value_type> chart(
       Semiring::zero(), [](const typename Semiring::value_type &value) {
         return Semiring::is_zero(value);
-      });
+      }, 0, numeric_lookup && widths.numeric_lookup_index ? n : 0);
   beam::TopWidthVpItemSelection vp_selection(widths.vp);
   beam::TopWidthWmbpItemSelection wmbp_selection(widths.wmbp);
   beam::TopWidthBeItemSelection be_selection(widths.be);
@@ -1283,6 +1288,7 @@ std::shared_ptr<const beam::ItemKeySet> scaffold_only_derivation_items(
   wide.memory_observer = widths.memory_observer;
   wide.memory_column_interval = widths.memory_column_interval;
   wide.memory_phase = beam::MemoryPhase::Scaffold;
+  wide.numeric_lookup_index = widths.numeric_lookup_index;
   engine::ChoiceMap<Value> choices;
   beam::RetainedChoices<Semiring> retention(&choices);
   auto dp = run_w_final_vp_wmbp_online_impl<Semiring>(

@@ -326,6 +326,31 @@ if(BUILD_TESTING)
   add_test(NAME scfg2_pilot_guided_inside COMMAND scfg2_pilot_guided_inside_test)
   set_tests_properties(scfg2_pilot_guided_inside PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 
+  add_executable(scfg2_bounded_outer_alpha_lookup_test test/scfg2_bounded_outer_alpha_lookup_test.cc)
+  target_link_libraries(scfg2_bounded_outer_alpha_lookup_test PRIVATE LinearKnot::scfg2_exact)
+  add_test(NAME scfg2_bounded_outer_alpha_lookup COMMAND scfg2_bounded_outer_alpha_lookup_test)
+  set_tests_properties(scfg2_bounded_outer_alpha_lookup PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
+  add_executable(scfg2_outer_max_pool_test test/scfg2_outer_max_pool_test.cc)
+  target_link_libraries(scfg2_outer_max_pool_test PRIVATE LinearKnot::scfg2_exact)
+  add_test(NAME scfg2_outer_max_pool COMMAND scfg2_outer_max_pool_test)
+  set_tests_properties(scfg2_outer_max_pool PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
+  add_executable(scfg2_primary_lookup_index_test test/scfg2_primary_lookup_index_test.cc)
+  target_link_libraries(scfg2_primary_lookup_index_test PRIVATE LinearKnot::scfg2_exact)
+  add_test(NAME scfg2_primary_lookup_index COMMAND scfg2_primary_lookup_index_test)
+  set_tests_properties(scfg2_primary_lookup_index PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
+  add_executable(scfg2_numeric_primary_lookup_test test/scfg2_numeric_primary_lookup_test.cc)
+  target_link_libraries(scfg2_numeric_primary_lookup_test PRIVATE LinearKnot::scfg2_exact)
+  add_test(NAME scfg2_numeric_primary_lookup COMMAND scfg2_numeric_primary_lookup_test)
+  set_tests_properties(scfg2_numeric_primary_lookup PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
+  add_executable(scfg2_beam_numeric_lookup_test test/scfg2_beam_numeric_lookup_test.cc)
+  target_link_libraries(scfg2_beam_numeric_lookup_test PRIVATE LinearKnot::scfg2_exact)
+  add_test(NAME scfg2_beam_numeric_lookup COMMAND scfg2_beam_numeric_lookup_test)
+  set_tests_properties(scfg2_beam_numeric_lookup PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
   add_executable(scfg2_outer_ranked_outside_test test/scfg2_outer_ranked_outside_test.cc)
   target_link_libraries(scfg2_outer_ranked_outside_test PRIVATE LinearKnot::scfg2_exact)
   add_test(NAME scfg2_outer_ranked_outside COMMAND scfg2_outer_ranked_outside_test)
