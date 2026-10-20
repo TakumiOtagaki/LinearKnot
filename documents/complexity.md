@@ -54,8 +54,14 @@ candidate peaks do not accumulate into a dense n-by-n allocation. The
 canonical sparse map remains the source of presence and iteration order.
 Queued V sources store only their rule and split coordinates. Bounded
 completion maxima use an indexed heap with O(log(b+2)) updates; querying
-immutable sorted alpha rows costs O(log(b+2)). These changes preserve the
-budgets above. An optional sorted diagnostic view has a separate
+immutable sorted alpha rows costs O(log(b+2)) in the fallback path.
+Canonical rows can use O(1) membership/rank lookup in a 64-position-word
+bitmap with prefix counts. A row is indexed only when its word extent is
+at most its retained record count, so all word payloads take O(L) space
+for L retained alpha records, with O(n) row headers. No n-by-n bitmap is
+allocated. Unsupported rows and failed optional allocations use binary
+search. These changes preserve the budgets above. An optional sorted
+diagnostic view has a separate
 O(b log(b+2)) observation cost per changed pool.
 
 Proposal-position deduplication adds O(n) bits and O(b) touched-word metadata.

@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <memory>
 #include <new>
+#include <optional>
 #include <stdexcept>
 
 namespace cparty::scfg2::beam {
@@ -23,6 +24,65 @@ struct Work {
   std::array<double, outer_probe_families> family_generation{}, family_propagation{};
 };
 struct Record { Item key; double alpha; };
+
+// Observation index of one immutable, sorted canonical-primary alpha row.
+// Rank refers back to the original records; no values or key identities are
+// replaced. Only rows with at least one record per spanned 64-position word
+// get indexed, so the total number of words is bounded by retained records.
+class PrimaryAlphaRankRow {
+ public:
+  void build(const std::vector<Record> &records, NT family, int end) {
+    std::vector<Word>{}.swap(words_);
+    first_word_ = 0;
+    if (records.empty() || end < 1 ||
+        static_cast<std::size_t>(family) >= static_cast<std::size_t>(NT::BE)) return;
+    int previous = 0;
+    for (const auto &record : records) {
+      const auto &key = record.key;
+      if (key.nonterminal != family || key.j != end || key.ip != -1 || key.jp != -1 ||
+          key.i <= previous || key.i > end) return;
+      previous = key.i;
+    }
+    const auto first = static_cast<std::size_t>(records.front().key.i) / 64;
+    const auto last = static_cast<std::size_t>(records.back().key.i) / 64;
+    const auto extent = last - first + 1;
+    if (extent > records.size()) return;
+    try {
+      std::vector<Word> words(extent);
+      for (const auto &record : records) {
+        const auto start = static_cast<std::size_t>(record.key.i);
+        words[start / 64 - first].bits |= std::uint64_t{1} << (start % 64);
+      }
+      std::size_t prefix = 0;
+      for (auto &word : words) {
+        word.prefix = prefix;
+        prefix += static_cast<unsigned>(__builtin_popcountll(word.bits));
+      }
+      first_word_ = first;
+      words_.swap(words);
+    } catch (const std::bad_alloc &) {
+    } catch (const std::length_error &) {
+    }
+  }
+  bool enabled() const { return !words_.empty(); }
+  std::size_t word_count() const { return words_.size(); }
+  std::size_t capacity() const { return words_.capacity(); }
+  std::optional<std::size_t> rank(int start) const {
+    if (start < 1) return std::nullopt;
+    const auto coordinate = static_cast<std::size_t>(start);
+    const auto word = coordinate / 64;
+    if (word < first_word_ || word - first_word_ >= words_.size()) return std::nullopt;
+    const auto &entry = words_[word - first_word_];
+    const auto bit = std::uint64_t{1} << (coordinate % 64);
+    if (!(entry.bits & bit)) return std::nullopt;
+    return entry.prefix + static_cast<unsigned>(__builtin_popcountll(entry.bits & (bit - 1)));
+  }
+
+ private:
+  struct Word { std::uint64_t bits = 0; std::size_t prefix = 0; };
+  std::size_t first_word_ = 0;
+  std::vector<Word> words_;
+};
 
 // Reusable position deduplication. Only words marked by this parent are sorted,
 // enumerated and reset; clearing a parent never scans the O(n)-sized metadata.
@@ -213,6 +273,7 @@ class Proposals {
     work.guide_records = alpha.values().size();
     if (work.guide_records > families * std::size_t(n) * (b + 1))
       throw std::runtime_error("guide alpha width bound violated");
+    build_alpha_rank();
   }
   const std::vector<Record> &column(NT nt, int end) const {
     static const std::vector<Record> empty;
@@ -225,6 +286,14 @@ class Proposals {
     const auto family = static_cast<std::size_t>(key.nonterminal);
     if (family >= families || key.j < 1 || key.j > n) return zero;
     const auto &records = right[key.j][family];
+    if (!alpha_rank_.empty() && family < primary_families && key.ip == -1 && key.jp == -1 &&
+        key.i >= 1 && key.i <= key.j) {
+      const auto &index = alpha_rank_[key.j][family];
+      if (index.enabled()) {
+        const auto rank = index.rank(key.i);
+        return rank ? records[*rank].alpha : zero;
+      }
+    }
     const auto found = std::lower_bound(records.begin(), records.end(), key,
         [](const Record &record, const Item &target) {
           return less_key(record.key, target);
@@ -349,6 +418,22 @@ class Proposals {
         work.cursor_steps > work.index_records)
       throw std::runtime_error("prefix structural work budget violated");
   }
+
+ private:
+  static constexpr std::size_t primary_families = static_cast<std::size_t>(NT::BE);
+  void build_alpha_rank() {
+    // This metadata is optional. A failed global extent allocation leaves all
+    // lookups on the original binary path; a failed row allocation disables
+    // only that row. Neither path touches authoritative alpha records.
+    if (n < 1) return;
+    try { alpha_rank_.resize(static_cast<std::size_t>(n) + 1); }
+    catch (const std::bad_alloc &) { return; }
+    catch (const std::length_error &) { return; }
+    for (int j = 1; j <= n; ++j)
+      for (std::size_t family = 0; family < primary_families; ++family)
+        alpha_rank_[j][family].build(right[j][family], static_cast<NT>(family), j);
+  }
+  std::vector<std::array<PrimaryAlphaRankRow, primary_families>> alpha_rank_;
 };
 
 using Signature = std::tuple<sc::grammar::RuleId, int, int, int, int>;

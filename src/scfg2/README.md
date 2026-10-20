@@ -78,6 +78,12 @@ Scaffold forcing, the pilot and the completed numeric guide inherit the
 option; other semirings and derivation representations retain their
 original storage policy.
 
+During outer preparation, immutable canonical alpha rows can use a presence
+bitmap and prefix popcounts to locate the original sorted record directly.
+An indexed row spans no more bitmap words than retained records. Sparse or
+noncanonical rows, BE and optional allocation failures retain binary search.
+This changes only point lookup; values, candidate order and pruning are unchanged.
+
 Private agendas confined to one end column store canonical parents in
 start-indexed slots. Their independent parent lists and per-parent source
 vectors retain traversal and deduction order. Other complete keys use a

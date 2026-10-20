@@ -45,7 +45,9 @@ sampling or BPP are not interchangeable semantic references for inside.
   including allocation failure after a canonical map update.
 - [Completion lookup](../test/scfg2_bounded_outer_alpha_lookup_test.cc) checks
   full-key and absent-key values against the original alpha map, as well as
-  position deduplication against sort/unique across word boundaries,
+  bitmap ranks across word boundaries, nonfinite and signed-zero values,
+  sparse/mixed-row fallback, large coordinates and index allocation failures.
+  It also compares position deduplication against sort/unique across word boundaries,
   out-of-range sentinels and optional allocation failures.
   [Bounded maxima](../test/scfg2_outer_max_pool_test.cc) compare the heap
   against a frozen set implementation after each offer, including map
