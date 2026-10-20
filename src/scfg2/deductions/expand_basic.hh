@@ -43,7 +43,9 @@ inline constexpr Deduction expand_basic_rule_impl(
     case grammar::RuleId::WI_BASE_SINGLE:
     case grammar::RuleId::WMB_EMPTY:
     case grammar::RuleId::BE_BASE_SAMEPAIR:
-      return make_zero_child_deduction(parent, rule, split);
+      // Keep one named result for every rule so runtime expansion can use
+      // NRVO instead of copying the complete Deduction on every return.
+      return out;
 
     case grammar::RuleId::V_INTERNAL:
       out.child_count = 1;
