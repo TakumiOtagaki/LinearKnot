@@ -30,6 +30,23 @@ Compare the oracle with explicit `WmbClosurePolicy::LegacyCompatible`.
 The production default requires completed-WMB weak closure. Legacy MFE,
 sampling or BPP are not interchangeable semantic references for inside.
 
+## Performance measurement
+
+Keep timing scope separate from correctness coverage. Inside-only benchmarks
+exclude the main MFE result; regression tests also cover MFE, choices and traceback.
+For finite-beam inside, report the complete call time, including scaffold
+forcing, pilot inside and outer ranking. Scaffold forcing itself uses a
+scaffold-only LogMax run and traceback; this is preparation for inside,
+not a request for the main MFE result.
+
+The pinned legacy `hfold_pf` API performs `pairing_tendency` after computing
+the partition-function energy, even with zero samples. A full API timing
+therefore includes this postprocessing. Separate that stage when comparing
+DP time, exclude probe-only diagnostic scans, and retain the full call time
+as a distinct measurement. A stage duration is not an end-to-end process
+time. Check numerical agreement and record compiler flags and binary hashes
+when changing a timing driver.
+
 ## Focused regression witnesses
 
 - [Private column storage](../test/scfg2_column_store_test.cc) compares
