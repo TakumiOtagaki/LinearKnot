@@ -12,6 +12,9 @@ class TopWidthWItemSelection {
  public:
   explicit TopWidthWItemSelection(std::size_t nonroot_width)
       : nonroot_(nonroot_width) {}
+  void enable_numeric_canonical_storage(cand_pos_t n) {
+    nonroot_.enable_numeric_canonical_storage(grammar::NonTerminal::W, n);
+  }
 
   void observe_ranked(const deductions::ItemKey &item,
                       bool live,

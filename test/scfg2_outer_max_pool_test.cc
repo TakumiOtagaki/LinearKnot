@@ -221,8 +221,10 @@ void copy_move_and_reuse(Pool &actual, ReferencePool &expected,
   compare_entries(parents, reference_parents);
 }
 
-void trace(std::size_t initial_width, bool prefilter, bool be, bool changing_width) {
+void trace(std::size_t initial_width, bool prefilter, bool be, bool changing_width,
+           bool trusted_index = false) {
   Pool actual;
+  if (trusted_index) actual.enable_trusted_index();
   ReferencePool expected;
   ownership_and_order(actual, expected, initial_width, prefilter, be);
   std::mt19937 random(20261020 + initial_width + 31 * be + 61 * prefilter);
@@ -242,6 +244,115 @@ void trace(std::size_t initial_width, bool prefilter, bool be, bool changing_wid
   }
   require(actual.evicted > 0, "max pool eviction/re-entry trace was vacuous");
 }
+
+Item primary_key(int id, bool fixed_span) {
+  const cand_pos_t start = 1 + id;
+  return {NT::V, start, fixed_span ? start + 200 : 200, -1, -1};
+}
+void enable_primary(Pool &pool, bool fixed_span) {
+  if (fixed_span) pool.enable_trusted_primary_span_index(NT::V, 200);
+  else pool.enable_trusted_primary_end_index(NT::V, 200);
+}
+void primary_trace(bool fixed_span, bool prefilter) {
+  Pool actual;
+  ReferencePool expected;
+  enable_primary(actual, fixed_span);
+  offer(actual, expected, primary_key(0, fixed_span), -0.0,
+        link_for(7, 1.0), true, 20, prefilter);
+  offer(actual, expected, primary_key(0, fixed_span), 0.0,
+        link_for(0, -0.0), true, 20, prefilter);
+  offer(actual, expected, primary_key(0, fixed_span), 7.0,
+        link_for(0, 2.0), false, 20, prefilter); // ownership must still throw
+  std::mt19937 random(20261021 + 71 * fixed_span + 31 * prefilter);
+  constexpr std::size_t widths[]{20, 2, 1, 0, 20};
+  for (int step = 0; step < 1200; ++step) {
+    const int id = 1 + random() % 96;
+    const auto value = step % 127 == 0 ? -0.0
+        : step % 149 == 0 ? -1e300 : double(static_cast<int>(random() % 41) - 20);
+    offer(actual, expected, primary_key(id, fixed_span), value,
+          link_for(random() % 31, double(step)), id > 12 && id % 13 == 0,
+          widths[(step / 100) % 5], prefilter);
+  }
+
+  // Copies/moves must never retain pointers into another pool's map. Rebuild
+  // a primary mirror before each ownership change and keep the source live.
+  auto copy = actual;
+  auto reference_copy = expected;
+  enable_primary(copy, fixed_span);
+  copy = copy;
+  copy = std::move(copy);
+  for (int id = 1; id <= 12; ++id)
+    offer(copy, reference_copy, primary_key(id, fixed_span), 50.0 + id,
+          link_for(id, -0.0), false, 20, prefilter);
+  compare(actual, expected);
+  Pool assigned;
+  enable_primary(assigned, !fixed_span);
+  assigned = copy;
+  auto reference_assigned = reference_copy;
+  enable_primary(assigned, fixed_span);
+  auto moved = std::move(assigned);
+  auto reference_moved = std::move(reference_assigned);
+  compare(assigned, reference_assigned);
+  compare(moved, reference_moved);
+  enable_primary(moved, fixed_span);
+  assigned = std::move(moved);
+  reference_assigned = std::move(reference_moved);
+  compare(moved, reference_moved);
+  offer(assigned, reference_assigned, primary_key(1, fixed_span), 100.0,
+        link_for(0, 3.0), false, 20, prefilter);
+  enable_primary(assigned, fixed_span);
+  assigned.disable_trusted_index();
+  auto parents = std::move(assigned.entries);
+  auto reference_parents = std::move(reference_assigned.entries);
+  assigned.novel.clear();
+  reference_assigned.novel.clear();
+  compare(assigned, reference_assigned);
+  compare_entries(parents, reference_parents);
+  enable_primary(assigned, fixed_span);
+  offer(assigned, reference_assigned, primary_key(1, fixed_span), -7.0,
+        link_for(0, 2.0), false, 20, prefilter);
+  compare_entries(parents, reference_parents);
+}
+
+void primary_full_key_fallback() {
+  for (bool fixed_span : {false, true}) {
+    const auto canonical = primary_key(64, fixed_span);
+    std::vector<Item> outside;
+    auto key = canonical; key.nonterminal = NT::W; outside.push_back(key);
+    key = canonical; ++key.j; outside.push_back(key);
+    key = canonical; key.ip = 3; outside.push_back(key);
+    key = canonical; key.jp = 190; outside.push_back(key);
+    key = canonical; key.i = 0; outside.push_back(key);
+    key = canonical; key.i = -1; outside.push_back(key);
+    key = canonical; key.j = key.i - 1; outside.push_back(key);
+    key = canonical; key.nonterminal = NT::BE; key.ip = 70; key.jp = 190; outside.push_back(key);
+    for (const auto &unsupported : outside) {
+      Pool actual;
+      ReferencePool expected;
+      enable_primary(actual, fixed_span);
+      // Mandatory entries exercise complete-key identity without requesting
+      // unsupported mixed-family novel ranking from either implementation.
+      offer(actual, expected, canonical, -4.0, link_for(8, 0.0), true, 2, false);
+      offer(actual, expected, unsupported, 9.0, link_for(3, -0.0), true, 2, false);
+      require(actual.entries.size() == 2, "noncanonical full key aliased primary start");
+      enable_primary(actual, fixed_span); // mixed pre-existing map must fall back
+      offer(actual, expected, canonical, -5.0, link_for(0, 17.0), true, 2, false);
+      offer(actual, expected, unsupported, 10.0, link_for(5, 3.0), true, 2, false);
+    }
+    Pool be;
+    ReferencePool expected;
+    if (fixed_span) be.enable_trusted_primary_span_index(NT::BE, 200);
+    else be.enable_trusted_primary_end_index(NT::BE, 200);
+    for (int id = 1; id < 32; ++id)
+      offer(be, expected, key_for(id, true), double(id % 9), link_for(id, 0.0), false, 4, true);
+  }
+  Pool ordinary;
+  ReferencePool expected;
+  const Item key{NT::V, 8, 200, 3, 100};
+  ordinary.entries.emplace(key, Pool::Entry{7.0, link_for(3, 1.0), true});
+  expected.entries.emplace(key, ReferencePool::Entry{7.0, link_for(3, 1.0), true});
+  offer(ordinary, expected, key, 6.0, link_for(0, 2.0), true, 1, false);
+}
 }  // namespace
 
 int main() {
@@ -251,7 +362,11 @@ int main() {
         for (std::size_t width : {0, 1, 2, 20}) trace(width, prefilter, be, false);
         trace(20, prefilter, be, true);
       }
+      trace(20, true, be, true, true); // generic full-key trusted index
     }
+    for (bool fixed_span : {false, true})
+      for (bool prefilter : {false, true}) primary_trace(fixed_span, prefilter);
+    primary_full_key_fallback();
     std::cout << "scfg2_outer_max_pool=ok compared_states=" << checked << '\n';
   } catch (const std::exception &error) {
     std::cerr << error.what() << '\n';

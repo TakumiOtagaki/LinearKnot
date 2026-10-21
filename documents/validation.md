@@ -52,6 +52,17 @@ sampling or BPP are not interchangeable semantic references for inside.
   [Bounded maxima](../test/scfg2_outer_max_pool_test.cc) compare the heap
   against a frozen set implementation after each offer, including map
   iteration/buckets, links, rank ties, eviction and copy/move lifetimes.
+  Trusted point mirrors additionally check fixed-family/end and fixed-family/span
+  domains, full-key fallback and disabling metadata before ownership moves.
+  [Numeric beam frontiers](../test/scfg2_right_boundary_item_frontier_test.cc)
+  compare start-indexed storage against the default map, including retained
+  callback order, pruned sets, chart iteration/bits and unsupported-key fallback.
+  Memory-observed runs keep their original containers; the beam lookup witness
+  also compares the unobserved numeric frontier against that path.
+  [Scaffold forcing](../test/scfg2_beam_scaffold_forcing_test.cc) compares the
+  forced traceback set and iteration order against the full-choice observation
+  path; the private standard-context path omits only unreachable choice records,
+  preserving all numeric states and finite-beam competition.
   [V agenda](../test/scfg2_v_retained_agenda_test.cc) checks complete expanded
   deductions and arrival order against shared generation, with nonempty
   scaffolds, excluded positions, duplicate sources and column release.

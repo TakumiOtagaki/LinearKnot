@@ -288,6 +288,22 @@ void check(const Input &input, std::size_t width, sc::WmbClosurePolicy closure,
   compare_work(max_reference.dp, max_indexed.dp);
   compare_choices(max_reference.choices, max_indexed.choices);
   compare_memory(observations[0], observations[1], outer);
+  // The numeric frontier storage is private to unobserved runs. Compare its
+  // complete stream, chart and first-winner choices with the observed path,
+  // whose original containers remain part of the memory API contract.
+  auto numeric_widths = indexed.widths;
+  numeric_widths.memory_observer = {};
+  candidates[1].clear();
+  const auto sum_numeric = sc::replay::run_w_final_vp_wmbp_online_observed<Sum>(
+      indexed_context, n, numeric_widths, observer(1), indexed.ranking);
+  compare_candidates(candidates[0], candidates[1]);
+  compare_charts(sum_reference.chart, sum_numeric.chart, n);
+  compare_work(sum_indexed, sum_numeric);
+  const auto max_numeric = sc::replay::run_w_final_vp_wmbp_online_viterbi_with_semiring<Max>(
+      indexed_context, n, numeric_widths, indexed.ranking);
+  compare_charts(max_reference.dp.chart, max_numeric.dp.chart, n);
+  compare_work(max_indexed.dp, max_numeric.dp);
+  compare_choices(max_indexed.choices, max_numeric.choices);
   ++cases;
 }
 

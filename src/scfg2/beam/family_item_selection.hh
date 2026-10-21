@@ -22,6 +22,9 @@ class TopWidthFamilyItemSelection {
   void set_forced(std::shared_ptr<const ItemKeySet> forced) {
     frontier_.set_forced(std::move(forced));
   }
+  void enable_numeric_canonical_storage(cand_pos_t n) {
+    frontier_.enable_numeric_canonical_storage(family_, n);
+  }
 
   void observe_ranked(const deductions::ItemKey &item,
                       bool live,

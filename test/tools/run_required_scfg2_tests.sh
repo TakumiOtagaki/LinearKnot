@@ -69,6 +69,7 @@ targets=(
   scfg2_case3_setup_width_test
   scfg2_prefix_lifetime_test
   scfg2_right_boundary_frontier_test
+  scfg2_right_boundary_item_frontier_test
   scfg2_beam_scaffold_forcing_test
   scfg2_pilot_guided_inside_test
   scfg2_bounded_outer_alpha_lookup_test

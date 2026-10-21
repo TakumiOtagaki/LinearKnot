@@ -56,6 +56,36 @@ std::string scaffold(std::mt19937 &rng, std::string &seq, int branches, int long
   return g;
 }
 
+// Memory-observed forcing retains the original complete choice store. A
+// no-op observer is therefore an independent public reference for the plain
+// choice-only optimization; every other context/width setting is identical.
+template <class Context>
+auto forcing_items_with_observer_check(
+    Context &ctx, cand_pos_t n,
+    const cparty::scfg2::replay::WFinalVpWmbpOnlineWidths &widths,
+    std::size_t &checked) {
+  namespace sc = cparty::scfg2;
+  const auto plain = sc::replay::scaffold_only_derivation_items(ctx, n, widths);
+  auto observed_widths = widths;
+  observed_widths.memory_observer = [](const sc::beam::MemoryObservation &) {};
+  const auto observed = sc::replay::scaffold_only_derivation_items(ctx, n, observed_widths);
+  if (plain->size() != observed->size() || plain->bucket_count() != observed->bucket_count()) {
+    std::cerr << "memory observer changed forced item count/buckets\n";
+    std::exit(EXIT_FAILURE);
+  }
+  auto reference = observed->begin();
+  const sc::deductions::ItemKeyEq equal;
+  for (const auto &item : *plain) {
+    if (reference == observed->end() || !equal(item, *reference)) {
+      std::cerr << "memory observer changed forced full keys/iteration order\n";
+      std::exit(EXIT_FAILURE);
+    }
+    ++reference;
+  }
+  ++checked;
+  return plain;
+}
+
 }  // namespace
 
 int main(int argc, char **argv) {
@@ -91,6 +121,7 @@ int main(int argc, char **argv) {
   double total_seconds = 0.0;
   int failures = 0;
   std::size_t maximum_forced_per_family_column = 0;
+  std::size_t forcing_observer_checks = 0;
   for (int c = 0; c < cases; ++c) {
     const int n = std::uniform_int_distribution<int>(120, 320)(rng);
     std::string seq(n, 'A');
@@ -105,8 +136,20 @@ int main(int argc, char **argv) {
       // pk-free branches partition the sequence, so no family occurs twice
       // at the same right boundary. This is stronger than an arbitrary
       // caller-supplied forced set and bounds each forced family's width by b+1.
-      const auto forced_items = replay::scaffold_only_derivation_items(
-          ctx, n, replay::WFinalVpWmbpOnlineWidths::uniform(20));
+      const auto forcing_widths = replay::WFinalVpWmbpOnlineWidths::uniform(20);
+      const auto forced_items = forcing_items_with_observer_check(
+          ctx, n, forcing_widths, forcing_observer_checks);
+      if (c == 0) {
+        // Production log contexts use both maintained closure policies. The
+        // same nonempty branching/long-loop scaffold also exercises retained
+        // fixed VM choices and the unreachable WI/WIP/BE choice boundary.
+        for (const auto policy : {WmbClosurePolicy::LegacyCompatible,
+                                  WmbClosurePolicy::RequireWeakClosure}) {
+          replay::WFinalLogWeightContext log_ctx(owner, policy);
+          (void)forcing_items_with_observer_check(
+              log_ctx, n, forcing_widths, forcing_observer_checks);
+        }
+      }
       std::map<std::pair<grammar::NonTerminal, cand_pos_t>, std::size_t> counts;
       for (const auto &item : *forced_items) {
         using NT = grammar::NonTerminal;
@@ -157,6 +200,7 @@ int main(int argc, char **argv) {
   std::cout << "checked_runs=" << checked << " failures=" << failures
             << " beam_seconds=" << total_seconds
             << " max_forced_per_family_column=" << maximum_forced_per_family_column
+            << " forcing_observer_checks=" << forcing_observer_checks
             << "\nscfg2_beam_scaffold_forcing=ok\n";
   return EXIT_SUCCESS;
 }

@@ -241,6 +241,9 @@ class Proposals {
     // Bound effective guide width, including forced exceptions. Keep root W
     // separately; all other families retain at most b pilot values per column.
     std::vector<std::array<MaxPool, families>> pools(n + 1);
+    for (int j = 0; j <= n; ++j)
+      for (std::size_t f = 0; f < families; ++f)
+        pools[j][f].enable_trusted_primary_end_index(static_cast<NT>(f), j);
     for (const auto &[key, value] : pilot.values()) {
       ++work.input_records;
       if (value == zero) continue;
@@ -470,6 +473,10 @@ outer_detail::Result bounded_outer(const outer_detail::Chart &pilot, const outer
     return (key.j - key.i) * families + phase.at(static_cast<std::size_t>(key.nonterminal));
   };
   std::vector<MaxPool> pools(families * root.j);
+  for (int span = 0; span < root.j; ++span)
+    for (std::size_t f = 0; f < families; ++f)
+      pools[static_cast<std::size_t>(span) * families + phase[f]]
+          .enable_trusted_primary_span_index(static_cast<NT>(f), span);
   pools.at(group(root)).offer(root, 0, {root, 0}, true, frontier_width);
   std::size_t pending = 1;
   out.peak_pending = out.peak_guide_states = 1;
@@ -482,6 +489,8 @@ outer_detail::Result bounded_outer(const outer_detail::Chart &pilot, const outer
   std::size_t validated_links = 0;
   if (profile) result.work.preparation_seconds = seconds(start);
   for (int g = static_cast<int>(pools.size()) - 1; g >= 0; --g) {
+    // No mirror pointer may outlive ownership by its canonical pool map.
+    pools[g].disable_trusted_index();
     auto parents = std::move(pools[g].entries);
     pools[g].novel.clear();
     pending -= parents.size();

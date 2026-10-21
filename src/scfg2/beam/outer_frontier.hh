@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <new>
 #include <stdexcept>
 #include <tuple>
 #include <unordered_map>
@@ -189,9 +190,176 @@ struct MaxPool {
     mutable bool view_valid_ = true;
   };
 
+  // Mirror only for closed internal callers. The canonical Entries remains
+  // the sole authority for presence, ownership, values and iteration order.
+  class EntryLookup {
+   public:
+    Entry *find(const Item &key) const {
+      if (slots_.empty()) return nullptr;
+      const auto p = position(slots_, key);
+      return slots_[p].entry;
+    }
+    void set(const Item &key, Entry *entry) {
+      if (slots_.empty()) rehash(8);
+      auto p = position(slots_, key);
+      if (slots_[p].entry) { slots_[p].entry = entry; return; }
+      if (size_ >= slots_.size() / 2) {
+        if (slots_.size() > slots_.max_size() / 2)
+          throw std::length_error("pool lookup capacity overflow");
+        rehash(slots_.size() * 2);
+        p = position(slots_, key);
+      }
+      slots_[p] = {key, entry};
+      ++size_;
+    }
+    void erase(const Item &key) {
+      if (slots_.empty()) return;
+      const auto p = position(slots_, key);
+      if (!slots_[p].entry) return;
+      const auto mask = slots_.size() - 1;
+      auto hole = p;
+      for (auto cursor = (hole + 1) & mask; slots_[cursor].entry;
+           cursor = (cursor + 1) & mask) {
+        const auto home = hash(slots_[cursor].key) & mask;
+        if (((hole - home) & mask) < ((cursor - home) & mask)) {
+          slots_[hole] = slots_[cursor];
+          hole = cursor;
+        }
+      }
+      slots_[hole] = {};
+      if (!--size_) { clear(); return; }
+      auto capacity = slots_.size();
+      while (capacity > 8 && size_ < capacity / 8) capacity /= 2;
+      if (capacity != slots_.size()) rehash(capacity);
+    }
+    void clear() noexcept { std::vector<Slot>{}.swap(slots_); size_ = 0; }
+
+   private:
+    struct Slot { Item key{}; Entry *entry = nullptr; };
+    static std::size_t hash(const Item &key) {
+      auto value = sc::deductions::ItemKeyHash{}(key);
+      // Keep all five fields, including BE anchors and noncanonical primary
+      // coordinates; mix upper bits before using a power-of-two slot count.
+      value ^= value >> (std::numeric_limits<std::size_t>::digits / 2);
+      return value;
+    }
+    static std::size_t position(const std::vector<Slot> &slots, const Item &key) {
+      const auto mask = slots.size() - 1;
+      auto p = hash(key) & mask;
+      while (slots[p].entry && !sc::deductions::ItemKeyEq{}(slots[p].key, key))
+        p = (p + 1) & mask;
+      return p;
+    }
+    void rehash(std::size_t capacity) {
+      std::vector<Slot> replacement(capacity);
+      for (const auto &slot : slots_) {
+        if (!slot.entry) continue;
+        replacement[position(replacement, slot.key)] = slot;
+      }
+      slots_.swap(replacement);
+    }
+    std::vector<Slot> slots_;
+    std::size_t size_ = 0;
+  };
+
+  // Only a validated canonical primary domain may use this representation.
+  // Within a fixed (family,end) or (family,span) pool, start determines the
+  // complete key. Every map Entry pointer remains authoritative and stable.
+  class PrimaryEntryLookup {
+   public:
+    Entry *find(cand_pos_t start) const {
+      if (slots_.empty()) return nullptr;
+      return slots_[position(slots_, start)].entry;
+    }
+    void set(cand_pos_t start, Entry *entry) {
+      if (slots_.empty()) rehash(8);
+      auto p = position(slots_, start);
+      if (slots_[p].entry) { slots_[p].entry = entry; return; }
+      if (size_ >= slots_.size() / 2) {
+        if (slots_.size() > slots_.max_size() / 2)
+          throw std::length_error("primary pool lookup capacity overflow");
+        rehash(slots_.size() * 2);
+        p = position(slots_, start);
+      }
+      slots_[p] = {start, entry};
+      ++size_;
+    }
+    void erase(cand_pos_t start) {
+      if (slots_.empty()) return;
+      const auto p = position(slots_, start);
+      if (!slots_[p].entry) return;
+      const auto mask = slots_.size() - 1;
+      auto hole = p;
+      for (auto cursor = (hole + 1) & mask; slots_[cursor].entry;
+           cursor = (cursor + 1) & mask) {
+        const auto home = hash(slots_[cursor].start) & mask;
+        if (((hole - home) & mask) < ((cursor - home) & mask)) {
+          slots_[hole] = slots_[cursor];
+          hole = cursor;
+        }
+      }
+      slots_[hole] = {};
+      if (!--size_) { clear(); return; }
+      auto capacity = slots_.size();
+      while (capacity > 8 && size_ < capacity / 8) capacity /= 2;
+      if (capacity != slots_.size()) rehash(capacity);
+    }
+    void clear() noexcept { std::vector<Slot>{}.swap(slots_); size_ = 0; }
+
+   private:
+    struct Slot { cand_pos_t start = 0; Entry *entry = nullptr; };
+    static std::size_t hash(cand_pos_t start) {
+      auto value = static_cast<std::uint64_t>(start) * UINT64_C(0x9e3779b97f4a7c15);
+      value ^= value >> 32;
+      return static_cast<std::size_t>(value);
+    }
+    static std::size_t position(const std::vector<Slot> &slots, cand_pos_t start) {
+      const auto mask = slots.size() - 1;
+      auto p = hash(start) & mask;
+      while (slots[p].entry && slots[p].start != start) p = (p + 1) & mask;
+      return p;
+    }
+    void rehash(std::size_t capacity) {
+      std::vector<Slot> replacement(capacity);
+      for (const auto &slot : slots_) {
+        if (!slot.entry) continue;
+        replacement[position(replacement, slot.start)] = slot;
+      }
+      slots_.swap(replacement);
+    }
+    std::vector<Slot> slots_;
+    std::size_t size_ = 0;
+  };
+
   Entries entries;
   NovelRanks novel;
   std::size_t evicted = 0;
+
+  // Trusted internal lifecycle only: after opt-in all insertions/erasures
+  // must go through offer(). Disable before ANY direct entries mutation,
+  // assignment, swap or move-out. Public/default pools keep ordinary find.
+  // A MaxPool copy starts with no mirror; a move disables the source mirror.
+  void enable_trusted_index() noexcept {
+    disable_trusted_index();
+    try {
+      for (auto &[key, entry] : entries) lookup_.set(key, &entry);
+      trusted_lookup_ = true;
+    } catch (const std::bad_alloc &) { disable_trusted_index(); }
+      catch (const std::length_error &) { disable_trusted_index(); }
+  }
+  void disable_trusted_index() noexcept {
+    trusted_lookup_ = false;
+    lookup_.clear();
+    primary_lookup_.clear();
+    primary_domain_ = PrimaryDomain::None;
+  }
+
+  void enable_trusted_primary_end_index(NT family, cand_pos_t end) noexcept {
+    enable_trusted_primary_index(family, end, PrimaryDomain::End);
+  }
+  void enable_trusted_primary_span_index(NT family, cand_pos_t span) noexcept {
+    enable_trusted_primary_index(family, span, PrimaryDomain::Span);
+  }
 
   MaxPool() = default;
   MaxPool(const MaxPool &other)
@@ -200,6 +368,7 @@ struct MaxPool {
   }
   MaxPool &operator=(const MaxPool &other) {
     if (this != &other) {
+      disable_trusted_index();
       entries = other.entries;
       novel = other.novel;
       evicted = other.evicted;
@@ -208,13 +377,17 @@ struct MaxPool {
     return *this;
   }
   MaxPool(MaxPool &&other)
-      : entries(std::move(other.entries)), novel(std::move(other.novel)),
+      : entries((other.disable_trusted_index(), std::move(other.entries))),
+        novel(std::move(other.novel)),
         evicted(other.evicted) {
     novel.rebind(entries);
+    other.disable_trusted_index();
     other.novel.clear();
   }
   MaxPool &operator=(MaxPool &&other) {
     if (this != &other) {
+      disable_trusted_index();
+      other.disable_trusted_index();
       entries = std::move(other.entries);
       novel = std::move(other.novel);
       evicted = other.evicted;
@@ -226,41 +399,104 @@ struct MaxPool {
 
   void offer(const Item &key, double value, const Outer::Link &link,
               bool mandatory, std::size_t width, bool prefilter = false) {
-    const auto old = entries.find(key);
+    Entry *old = find_entry(key);
     // A new max candidate below the full frontier would be inserted and
     // immediately evicted. Preserve the tie rule and eviction count while
     // avoiding a map-node allocation and the matching heap update.
-    if (prefilter && old == entries.end() && !mandatory && novel.size() == width &&
+    if (prefilter && old == nullptr && !mandatory && novel.size() == width &&
         (width == 0 || !Better{}({key, value}, novel.worst()))) {
       ++evicted;
       return;
     }
-    if (old != entries.end()) {
-      if (old->second.mandatory != mandatory) throw std::runtime_error("pool ownership changed");
-      if (value < old->second.value ||
-          (value == old->second.value && !better_link(link, old->second.link))) return;
+    if (old != nullptr) {
+      if (old->mandatory != mandatory) throw std::runtime_error("pool ownership changed");
+      if (value < old->value ||
+          (value == old->value && !better_link(link, old->link))) return;
       // An equal-score predecessor update leaves the rank unchanged. Avoid
       // reordering its heap cell just to replace this link.
-      if (value == old->second.value) {
-        old->second.link = link;
+      if (value == old->value) {
+        old->link = link;
         return;
       }
-      const auto heap_index = old->second.heap_index;
-      old->second = Entry{value, link, mandatory, heap_index};
-      if (!mandatory) novel.improve(old->second, value);
+      const auto heap_index = old->heap_index;
+      *old = Entry{value, link, mandatory, heap_index};
+      if (!mandatory) novel.improve(*old, value);
     } else {
       const auto inserted = entries.insert_or_assign(key, Entry{value, link, mandatory});
+      if (trusted_lookup_) {
+        try {
+          if (primary_domain_ == PrimaryDomain::None)
+            lookup_.set(key, &inserted.first->second);
+          else primary_lookup_.set(key.i, &inserted.first->second);
+        }
+        catch (const std::bad_alloc &) { disable_trusted_index(); }
+        catch (const std::length_error &) { disable_trusted_index(); }
+      }
       if (!mandatory) novel.insert({key, value}, inserted.first->second);
     }
     if (!mandatory) {
       if (novel.size() > width) {
         const auto worst = novel.worst();
+        if (trusted_lookup_) {
+          try {
+            if (primary_domain_ == PrimaryDomain::None) lookup_.erase(worst.key);
+            else primary_lookup_.erase(worst.key.i);
+          }
+          catch (const std::bad_alloc &) { disable_trusted_index(); }
+          catch (const std::length_error &) { disable_trusted_index(); }
+        }
         entries.erase(worst.key);
         novel.pop_erased_worst();
         ++evicted;
       }
     }
   }
+
+ private:
+  enum class PrimaryDomain { None, End, Span };
+  bool primary_domain_matches(const Item &key) const {
+    return key.nonterminal == primary_family_ && key.ip == -1 && key.jp == -1 &&
+        key.i >= 1 && key.j >= key.i &&
+        (primary_domain_ == PrimaryDomain::End ? key.j == primary_extent_
+                                             : key.j - key.i == primary_extent_);
+  }
+  Entry *find_entry(const Item &key) {
+    if (trusted_lookup_) {
+      if (primary_domain_ == PrimaryDomain::None) return lookup_.find(key);
+      if (primary_domain_matches(key)) return primary_lookup_.find(key.i);
+      // A malformed or differently grouped offer/query must never alias a
+      // live start. The map Entry pointer remains valid when metadata clears.
+      disable_trusted_index();
+    }
+    const auto found = entries.find(key);
+    return found == entries.end() ? nullptr : &found->second;
+  }
+  void enable_trusted_primary_index(NT family, cand_pos_t extent,
+                                     PrimaryDomain domain) noexcept {
+    disable_trusted_index();
+    if (static_cast<std::size_t>(family) >= static_cast<std::size_t>(NT::BE) ||
+        (domain == PrimaryDomain::End ? extent < 1 : extent < 0)) {
+      enable_trusted_index();
+      return;
+    }
+    primary_domain_ = domain;
+    primary_family_ = family;
+    primary_extent_ = extent;
+    try {
+      for (auto &[key, entry] : entries) {
+        if (!primary_domain_matches(key)) { disable_trusted_index(); return; }
+        primary_lookup_.set(key.i, &entry);
+      }
+      trusted_lookup_ = true;
+    } catch (const std::bad_alloc &) { disable_trusted_index(); }
+      catch (const std::length_error &) { disable_trusted_index(); }
+  }
+  EntryLookup lookup_;
+  PrimaryEntryLookup primary_lookup_;
+  bool trusted_lookup_ = false;
+  PrimaryDomain primary_domain_ = PrimaryDomain::None;
+  NT primary_family_ = NT::W;
+  cand_pos_t primary_extent_ = 0;
 };
 
 } // namespace cparty::scfg2::beam::outer_detail

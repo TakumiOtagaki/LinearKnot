@@ -20,6 +20,9 @@ class TopWidthWmbpItemSelection {
   }
 
   explicit TopWidthWmbpItemSelection(std::size_t width) : frontier_(width) {}
+  void enable_numeric_canonical_storage(cand_pos_t n) {
+    frontier_.enable_numeric_canonical_storage(grammar::NonTerminal::WMBP, n);
+  }
 
   void observe_completed(const deductions::ItemKey &item, double value) {
     observe_ranked(item, value != 0.0, value);

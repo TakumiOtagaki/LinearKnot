@@ -17,6 +17,10 @@ class TopWidthWmbItemSelection {
  public:
   explicit TopWidthWmbItemSelection(std::size_t width)
       : internal_(width), root_suffix_(width) {}
+  void enable_numeric_canonical_storage(cand_pos_t n) {
+    internal_.enable_numeric_canonical_storage(grammar::NonTerminal::WMB, n);
+    root_suffix_.enable_numeric_canonical_storage(grammar::NonTerminal::WMB, n);
+  }
 
   void observe_completed(const deductions::ItemKey &item,
                          double value,

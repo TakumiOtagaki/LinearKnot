@@ -58,6 +58,7 @@
 #include <memory>
 #include <stdexcept>
 #include <tuple>
+#include <type_traits>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -381,6 +382,28 @@ run_w_final_vp_wmbp_online_impl(
   beam::TopWidthFamilyItemSelection vpr_selection(
       grammar::NonTerminal::VPR, widths.vpr);
   beam::TopWidthWItemSelection w_selection(widths.w);
+  // Private numeric canonical frontiers change no retained rank order. The
+  // only pruned callbacks below erase zero-valued chart entries; their order
+  // cannot change the remaining chart iteration or any semiring arithmetic.
+  // Memory observations retain the original container layout.
+  if constexpr (numeric_lookup && std::is_same_v<std::decay_t<Context>, WFinalLogWeightContext>) {
+    if (widths.numeric_lookup_index && !widths.memory_observer && n == ctx.sequence_length()) {
+      vp_selection.enable_numeric_canonical_storage(n);
+      wmbp_selection.enable_numeric_canonical_storage(n);
+      vm_selection.enable_numeric_canonical_storage(n);
+      v_selection.enable_numeric_canonical_storage(n);
+      wmv_selection.enable_numeric_canonical_storage(n);
+      wmb_selection.enable_numeric_canonical_storage(n);
+      wmp_selection.enable_numeric_canonical_storage(n);
+      wm_selection.enable_numeric_canonical_storage(n);
+      wi_selection.enable_numeric_canonical_storage(n);
+      wip_selection.enable_numeric_canonical_storage(n);
+      wmbw_selection.enable_numeric_canonical_storage(n);
+      vpl_selection.enable_numeric_canonical_storage(n);
+      vpr_selection.enable_numeric_canonical_storage(n);
+      w_selection.enable_numeric_canonical_storage(n);
+    }
+  }
   // Forced WM parents by right boundary, for the WM start-prefix selection.
   std::unordered_map<cand_pos_t, std::vector<cand_pos_t>> forced_wm_starts;
   if (widths.forced_items) {
@@ -1296,9 +1319,9 @@ run_w_final_vp_wmbp_online_impl(
 // a finite beam that prunes the items realising them in the pseudoknot-free
 // way can lose a pair entirely and disconnect the root.  This runs the same
 // beam in LogMax with every deduction that generates a G' pair zeroed, so
-// only scaffold-only derivations compete; the per-column candidates are few,
-// and a width of at least 1000 keeps them all.  The traceback of its root
-// is one such derivation.  Returns an empty set when none exists.
+// only scaffold-only derivations compete, using the same finite beam with
+// width at least 1000. The traceback of its root is one such derivation.
+// Returns an empty set when none exists.
 template <class Context>
 std::shared_ptr<const beam::ItemKeySet> scaffold_only_derivation_items(
     Context &ctx,
@@ -1325,6 +1348,29 @@ std::shared_ptr<const beam::ItemKeySet> scaffold_only_derivation_items(
           const engine::Chart<Value> &chart,
           auto) {
         if (Semiring::is_zero(contribution)) return;
+        // With standard contexts VP is zero in this private G'=empty pass:
+        // fixed endpoints are inadmissible and novel generated pairs are zeroed.
+        // Every WMBP mode needs VP, so no nonempty WMB connects WI/WIP/BE to W.
+        // Keep all numeric states/frontiers; omit only unreachable choices.
+        if constexpr (std::is_same_v<Context, WFinalLogWeightContext> ||
+                      std::is_same_v<Context, WFinalExactInsideContext>) {
+          if (!widths.memory_observer) {
+            using N = grammar::NonTerminal;
+            switch (item.nonterminal) {
+              case N::WI:
+              case N::WIP:
+              case N::BE:
+                return;
+              case N::VM:
+                // V_VM is the only active VM consumer, at this same span.
+                if (!engine::is_fixed_scaffold_pair(engine::TracebackPair{
+                    item.i, item.j, engine::TracebackPairLane::Square}, ctx)) return;
+                break;
+              default:
+                break;
+            }
+          }
+        }
         retention.before_parent(item, chart);
         choices.observe_with_tie_break(
             item, deduction, contribution,
