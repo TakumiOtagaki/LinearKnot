@@ -52,7 +52,13 @@ primary keys: O(n) row headers and geometrically sized open-addressed rows.
 Rows shrink after erasure and release their slots when empty, so old
 candidate peaks do not accumulate into a dense n-by-n allocation. The
 canonical sparse map remains the source of presence and iteration order.
-Queued V sources store only their rule and split coordinates. Bounded
+Queued V sources store a byte rule tag and two bounded wing lengths; their
+duplicate bitmap has (MAXLOOP+1)(MAXLOOP+2)/2 bits per live parent. The optional
+numeric pending index uses O(n MAXLOOP) fixed metadata across MAXLOOP+2
+rolling end columns, with source buffers only in occupied cells. Consumption
+and column expiry release these buffers, so historical peaks do not accumulate.
+With fixed MAXLOOP this adds O(n) metadata; generic and memory-observed runs
+keep the sparse map. Bounded
 completion maxima use an indexed heap with O(log(b+2)) updates; querying
 immutable sorted alpha rows costs O(log(b+2)) in the fallback path.
 Canonical rows can use O(1) membership/rank lookup in a 64-position-word

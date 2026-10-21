@@ -94,9 +94,15 @@ pointers remain stable within the column and expire at its next reset.
 Source vectors request an initial capacity of eight entries; failure of this
 optional reservation falls back to ordinary vector growth.
 
-The V agenda queues compact rule/split records in first-arrival order and
-expands them through the shared child schema before evaluation. Completion
-ranking reads the immutable sorted alpha rows and uses an indexed heap for
+The V agenda queues three-byte rule/wing records in first-arrival order and
+expands them through the shared child schema before evaluation. Its duplicate
+bitmap covers only wing pairs whose total length is at most MAXLOOP.
+Standard numeric runs without memory observations can index pending parents
+directly in MAXLOOP+2 rolling end columns. Each occupied cell releases its entire source
+buffer on consumption or column expiry. Column stamps prevent aliasing;
+unsupported events and optional allocation failure use the original map.
+Memory observations and generic contexts retain the map representation.
+Completion ranking reads the immutable sorted alpha rows and uses an indexed heap for
 bounded maxima, reusing a deduction buffer between fully generated parents.
 Its canonical map mutation order, score/key cutoff, equal
 score predecessor rule and mandatory-state ownership remain unchanged.

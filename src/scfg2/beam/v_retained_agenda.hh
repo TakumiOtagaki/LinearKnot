@@ -5,11 +5,14 @@
 #include "scfg2/beam/memory_observation.hh"
 
 #include <algorithm>
+#include <array>
 #include <bitset>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <limits>
+#include <new>
+#include <optional>
 #include <stdexcept>
 #include <unordered_map>
 #include <utility>
@@ -34,6 +37,42 @@ struct VRetainedAgendaStats {
 template <class Context>
 class VRetainedAgenda {
  public:
+  VRetainedAgenda() = default;
+  VRetainedAgenda(const VRetainedAgenda &) = default;
+  VRetainedAgenda(VRetainedAgenda &&) noexcept = default;
+  VRetainedAgenda &operator=(VRetainedAgenda &&) noexcept = default;
+  VRetainedAgenda &operator=(const VRetainedAgenda &other) {
+    if (this != &other) {
+      // Keep parent lists, map owners and numeric pending cells together if
+      // any allocation fails while copying either representation.
+      VRetainedAgenda copy(other);
+      *this = std::move(copy);
+    }
+    return *this;
+  }
+  // Explicit internal opt-in before the first column/event. A failed optional
+  // allocation leaves the old packed map untouched. No empty ParentSources
+  // (or their vectors) are constructed in the preallocated cell metadata.
+  bool enable_numeric_pending(cand_pos_t n) {
+    if (n <= 0 || column_ != -1 || pending_parent_count() ||
+        !parent_starts_by_column_.empty() || !parent_starts_.empty()) return false;
+    const auto stride = static_cast<std::size_t>(n) + 1;
+    try {
+      if (stride > std::vector<std::optional<ParentSources>>{}.max_size() / ring_columns ||
+          stride > std::vector<cand_pos_t>{}.max_size() / ring_columns ||
+          stride > std::vector<unsigned char>{}.max_size() / ring_columns) return false;
+      NumericPending replacement;
+      replacement.n = n;
+      replacement.stride = stride;
+      replacement.cells.resize(stride * ring_columns);
+      replacement.touched.resize(stride * ring_columns);
+      replacement.marked.resize(stride * ring_columns, false);
+      numeric_pending_.emplace(std::move(replacement));
+      return true;
+    } catch (const std::bad_alloc &) { return false; }
+      catch (const std::length_error &) { return false; }
+  }
+
   void build_column(cand_pos_t j,
                     const std::vector<cand_pos_t> &retained_vm_starts,
                     std::size_t max_hairpin_unpaired,
@@ -127,30 +166,17 @@ class VRetainedAgenda {
     if (parent.nonterminal != grammar::NonTerminal::V ||
         parent.ip != -1 || parent.jp != -1 ||
         !deductions::is_valid_primary_span(parent)) return {};
+    if (const auto index = ring_cell(parent)) {
+      std::vector<deductions::Deduction> out;
+      expand_sources(parent, *numeric_pending_->cells[*index], out);
+      erase_ring_cell(*index);
+      return out;
+    }
+    if (numeric_pending_ && numeric_pending_->n && !numeric_pending_->mixed) return {};
     const auto found = deductions_by_parent_.find(parent_key(parent.i, parent.j));
     if (found == deductions_by_parent_.end()) return {};
     std::vector<deductions::Deduction> out;
-    out.reserve(found->second.sources.size());
-    // Expansion is pure. Restore every field through the shared schema in
-    // first-arrival order before releasing this parent's owned records.
-    for (const auto &source : found->second.sources) {
-      grammar::RuleSplit split{};
-      split.k = source.k;
-      split.l = source.l;
-      switch (source.rule) {
-        case grammar::RuleId::V_HAIRPIN:
-          out.push_back(deductions::expand_basic_rule<grammar::RuleId::V_HAIRPIN>(parent, split));
-          break;
-        case grammar::RuleId::V_INTERNAL:
-          out.push_back(deductions::expand_basic_rule<grammar::RuleId::V_INTERNAL>(parent, split));
-          break;
-        case grammar::RuleId::V_VM:
-          out.push_back(deductions::expand_basic_rule<grammar::RuleId::V_VM>(parent, split));
-          break;
-        default:
-          throw std::logic_error("unexpected compact V source rule");
-      }
-    }
+    expand_sources(parent, found->second, out);
     deductions_by_parent_.erase(found);
     return out;
   }
@@ -161,11 +187,23 @@ class VRetainedAgenda {
   // Parent-side admission may skip take_for(). Such candidates are still
   // expired after the complete V phase; no later column can consume them.
   void release_column() {
-    for (const cand_pos_t i : parent_starts_)
-      deductions_by_parent_.erase(parent_key(i, column_));
+    for (const cand_pos_t i : parent_starts_) {
+      const deductions::ItemKey parent{grammar::NonTerminal::V, i, column_, -1, -1};
+      if (const auto index = ring_cell(parent)) erase_ring_cell(*index);
+      else if (!numeric_pending_ || !numeric_pending_->n || numeric_pending_->mixed)
+        deductions_by_parent_.erase(parent_key(i, column_));
+    }
+    if (numeric_pending_ && numeric_pending_->n && column_ >= 1 &&
+        column_ <= numeric_pending_->n) {
+      const auto row = static_cast<std::size_t>(column_) % ring_columns;
+      if (numeric_pending_->columns[row].stamp == column_ &&
+          !numeric_pending_->columns[row].live) clear_ring_row(row);
+    }
     parent_starts_.clear();
   }
-  std::size_t pending_parent_count() const { return deductions_by_parent_.size(); }
+  std::size_t pending_parent_count() const {
+    return deductions_by_parent_.size() + (numeric_pending_ ? numeric_pending_->live : 0);
+  }
   std::size_t pending_column_count() const { return parent_starts_by_column_.size(); }
 
   ContainerMemory memory_snapshot(const char *name) const {
@@ -174,6 +212,16 @@ class VRetainedAgenda {
       (void)parent;
       out.vector_size_bytes += cell.sources.size() * sizeof(CompactSource);
       out.vector_capacity_bytes += cell.sources.capacity() * sizeof(CompactSource);
+    }
+    if (numeric_pending_) {
+      out.add(vector_memory("", numeric_pending_->cells));
+      out.add(vector_memory("", numeric_pending_->touched));
+      out.add(vector_memory("", numeric_pending_->marked));
+      for (const auto &cell : numeric_pending_->cells) {
+        if (!cell) continue;
+        out.vector_size_bytes += cell->sources.size() * sizeof(CompactSource);
+        out.vector_capacity_bytes += cell->sources.capacity() * sizeof(CompactSource);
+      }
     }
     out.add(hash_vector_memory("", parent_starts_by_column_));
     out.add(vector_memory("", parent_starts_));
@@ -208,14 +256,26 @@ class VRetainedAgenda {
     if (required_child != nullptr &&
         (source.child_count != 1 ||
          !deductions::ItemKeyEq{}(source.children[0].item, *required_child))) return;
-    append_source(parent, CompactSource{Rule, split.k, split.l});
+    append_source(parent, Rule, split.k, split.l);
   }
 
+  // Only the three fixed V schemas enter this private queue. INTERNAL wing
+  // lengths are bounded by the unchanged shared guard; absolute coordinates
+  // are restored only by take_for(), through the unchanged shared expansion.
   struct CompactSource {
-    grammar::RuleId rule;
-    int k = -1;
-    int l = -1;
+    std::uint8_t rule;
+    std::uint8_t left = 0;
+    std::uint8_t right = 0;
   };
+  static_assert(MAXLOOP >= 0 &&
+                    MAXLOOP <= std::numeric_limits<std::uint8_t>::max(),
+                "compact V wings require an unsigned byte");
+  static_assert(static_cast<unsigned>(grammar::RuleId::V_HAIRPIN) <= 255 &&
+                    static_cast<unsigned>(grammar::RuleId::V_INTERNAL) <= 255 &&
+                    static_cast<unsigned>(grammar::RuleId::V_VM) <= 255,
+                "compact V rule tags require an unsigned byte");
+  static_assert(sizeof(CompactSource) == 3,
+                "compact V source must use three bytes");
 
   static std::uint64_t parent_key(cand_pos_t i, cand_pos_t j) {
     static_assert(std::numeric_limits<cand_pos_t>::digits <= 32,
@@ -224,25 +284,34 @@ class VRetainedAgenda {
         static_cast<std::uint32_t>(j);
   }
 
-  void append_source(const deductions::ItemKey &parent, CompactSource source) {
-    const auto rule = source.rule;
-    auto [found, inserted] = deductions_by_parent_.try_emplace(parent_key(parent.i, parent.j));
-    auto &cell = found->second;
+  void append_source(const deductions::ItemKey &parent,
+                     grammar::RuleId rule, int k, int l) {
+    auto [storage, inserted] = source_storage(parent);
+    auto &cell = *storage;
+    CompactSource source{static_cast<std::uint8_t>(rule)};
     if (rule == grammar::RuleId::V_INTERNAL) {
       // The shared split guard bounds each wing by MAXLOOP. Keep the vector's
       // first-arrival order, but test repeated (k,l) in constant space/time
       // per queued parent instead of rescanning its accumulated sources.
-      const auto left = source.k - parent.i - 1;
-      const auto right = parent.j - source.l - 1;
-      if (left < 0 || left > MAXLOOP || right < 0 || right > MAXLOOP)
+      const auto left = k - parent.i - 1;
+      const auto right = parent.j - l - 1;
+      if (left < 0 || left > MAXLOOP || right < 0 || right > MAXLOOP || left + right > MAXLOOP)
         throw std::logic_error("V internal source exceeds the shared loop window");
-      const auto slot = static_cast<std::size_t>(left) * loop_width + right;
+      // Row left contains MAXLOOP + 1 - left legal right wings.
+      // Its prefix starts after left * (2 * loop_width + 1 - left) / 2 bits.
+      const auto row = static_cast<std::size_t>(left);
+      const auto slot = row * (2 * loop_width + 1 - row) / 2 + right;
       if (cell.internal_splits.test(slot)) return;
       cell.internal_splits.set(slot);
+      source.left = static_cast<std::uint8_t>(left);
+      source.right = static_cast<std::uint8_t>(right);
     } else {
       const bool duplicate = std::any_of(
           cell.sources.begin(), cell.sources.end(), [&](const auto &old) {
-            return old.rule == source.rule && old.k == source.k && old.l == source.l;
+            // Both non-INTERNAL schemas have k/l == -1; their zero wings
+            // preserve the old (rule,k,l) identity without storing sentinels.
+            return old.rule == source.rule && old.left == source.left &&
+                old.right == source.right;
           });
       if (duplicate) return;
     }
@@ -267,14 +336,161 @@ class VRetainedAgenda {
   struct ParentSources {
     std::vector<CompactSource> sources;
     // Released together with the existing parent source vector in take_for.
-    std::bitset<loop_width * loop_width> internal_splits;
+    std::bitset<loop_width * (loop_width + 1) / 2> internal_splits;
   };
+  static constexpr std::size_t ring_columns = MAXLOOP + 2;
+  struct RingColumn {
+    cand_pos_t stamp = -1;
+    std::size_t live = 0;
+    std::size_t touched = 0;
+  };
+  struct NumericPending {
+    cand_pos_t n = 0;
+    std::size_t stride = 0;
+    std::array<RingColumn, ring_columns> columns{};
+    std::vector<std::optional<ParentSources>> cells;
+    std::vector<cand_pos_t> touched;
+    std::vector<unsigned char> marked;
+    std::size_t live = 0;
+    bool mixed = false;
+
+    NumericPending() = default;
+    NumericPending(const NumericPending &) = default;
+    NumericPending &operator=(const NumericPending &other) {
+      if (this != &other) {
+        NumericPending copy(other);
+        *this = std::move(copy);
+      }
+      return *this;
+    }
+    NumericPending(NumericPending &&other) noexcept
+        : n(std::exchange(other.n, 0)), stride(std::exchange(other.stride, 0)),
+          columns(other.columns), cells(std::move(other.cells)),
+          touched(std::move(other.touched)), marked(std::move(other.marked)),
+          live(std::exchange(other.live, 0)), mixed(std::exchange(other.mixed, false)) {
+      other.columns = {};
+    }
+    NumericPending &operator=(NumericPending &&other) noexcept {
+      if (this == &other) {
+        // The enclosing agenda's ordinary maps/vectors may empty themselves
+        // on self-move. Keep no pending owner behind that moved outer state.
+        NumericPending empty;
+        return *this = std::move(empty);
+      }
+      n = std::exchange(other.n, 0);
+      stride = std::exchange(other.stride, 0);
+      columns = other.columns;
+      cells = std::move(other.cells);
+      touched = std::move(other.touched);
+      marked = std::move(other.marked);
+      live = std::exchange(other.live, 0);
+      mixed = std::exchange(other.mixed, false);
+      other.columns = {};
+      return *this;
+    }
+  };
+
+  static void expand_sources(const deductions::ItemKey &parent,
+                            const ParentSources &cell,
+                            std::vector<deductions::Deduction> &out) {
+    out.reserve(cell.sources.size());
+    // Expansion is pure; preserve every shared-schema field/arrival position.
+    for (const auto &source : cell.sources) {
+      grammar::RuleSplit split{};
+      const auto rule = static_cast<grammar::RuleId>(source.rule);
+      if (rule == grammar::RuleId::V_INTERNAL) {
+        split.k = parent.i + 1 + source.left;
+        split.l = parent.j - 1 - source.right;
+      } // Hairpin/VM retain RuleSplit's exact k/l/p/q == -1 defaults.
+      switch (rule) {
+        case grammar::RuleId::V_HAIRPIN:
+          out.push_back(deductions::expand_basic_rule<grammar::RuleId::V_HAIRPIN>(parent, split));
+          break;
+        case grammar::RuleId::V_INTERNAL:
+          out.push_back(deductions::expand_basic_rule<grammar::RuleId::V_INTERNAL>(parent, split));
+          break;
+        case grammar::RuleId::V_VM:
+          out.push_back(deductions::expand_basic_rule<grammar::RuleId::V_VM>(parent, split));
+          break;
+        default:
+          throw std::logic_error("unexpected compact V source rule");
+      }
+    }
+  }
+
+  bool ring_key_supported(const deductions::ItemKey &parent) const {
+    return numeric_pending_ && numeric_pending_->n > 0 &&
+        parent.nonterminal == grammar::NonTerminal::V && parent.ip == -1 && parent.jp == -1 &&
+        parent.i >= 1 && parent.j >= parent.i && parent.j <= numeric_pending_->n;
+  }
+  std::optional<std::size_t> ring_cell(const deductions::ItemKey &parent) const {
+    if (!ring_key_supported(parent)) return std::nullopt;
+    const auto &pending = *numeric_pending_;
+    const auto row = static_cast<std::size_t>(parent.j) % ring_columns;
+    if (pending.columns[row].stamp != parent.j) return std::nullopt;
+    const auto index = row * pending.stride + static_cast<std::size_t>(parent.i);
+    return pending.cells[index] ? std::optional<std::size_t>{index} : std::nullopt;
+  }
+  void erase_ring_cell(std::size_t index) {
+    auto &pending = *numeric_pending_;
+    pending.cells[index].reset(); // Release this source vector's full capacity.
+    --pending.columns[index / pending.stride].live;
+    --pending.live;
+  }
+  void clear_ring_row(std::size_t row) {
+    auto &pending = *numeric_pending_;
+    const auto offset = row * pending.stride;
+    auto &column = pending.columns[row];
+    // Call only once the row has no live owners. Marks deduplicate touched
+    // starts even if a consumed parent is subsequently reintroduced.
+    for (std::size_t t = 0; t < column.touched; ++t) {
+      const auto index = offset + static_cast<std::size_t>(pending.touched[offset + t]);
+      pending.cells[index].reset();
+      pending.marked[index] = false;
+    }
+    column = {};
+  }
+  std::pair<ParentSources *, bool> source_storage(const deductions::ItemKey &parent) {
+    if (numeric_pending_ && numeric_pending_->n > 0) {
+      auto &pending = *numeric_pending_;
+      if (const auto index = ring_cell(parent)) return {&*pending.cells[*index], false};
+      // Out-of-domain/colliding events can coexist safely in the old map.
+      // Once such an event occurred, keep an existing complete parent in
+      // that owner even if its geometry later fits the current ring window.
+      if (pending.mixed) {
+        const auto found = deductions_by_parent_.find(parent_key(parent.i, parent.j));
+        if (found != deductions_by_parent_.end()) return {&found->second, false};
+      }
+      if (ring_key_supported(parent) && column_ >= 1 && parent.j >= column_ &&
+          parent.j - column_ <= MAXLOOP + 1) {
+        const auto row = static_cast<std::size_t>(parent.j) % ring_columns;
+        auto &column = pending.columns[row];
+        if (column.stamp == parent.j || !column.live) {
+          if (column.stamp != parent.j) { clear_ring_row(row); column.stamp = parent.j; }
+          const auto offset = row * pending.stride;
+          const auto index = offset + static_cast<std::size_t>(parent.i);
+          pending.cells[index].emplace();
+          ++column.live;
+          ++pending.live;
+          if (!pending.marked[index]) {
+            pending.marked[index] = true;
+            pending.touched[offset + column.touched++] = parent.i;
+          }
+          return {&*pending.cells[index], true};
+        }
+      }
+      pending.mixed = true;
+    }
+    auto [found, inserted] = deductions_by_parent_.try_emplace(parent_key(parent.i, parent.j));
+    return {&found->second, inserted};
+  }
   cand_pos_t column_ = -1;
   VRetainedAgendaStats stats_{};
   std::unordered_map<std::uint64_t, ParentSources> deductions_by_parent_;
   std::unordered_map<cand_pos_t, std::vector<cand_pos_t>>
       parent_starts_by_column_;
   std::vector<cand_pos_t> parent_starts_;
+  std::optional<NumericPending> numeric_pending_;
 };
 
 }  // namespace cparty::scfg2::beam

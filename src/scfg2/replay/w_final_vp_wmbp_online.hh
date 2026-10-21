@@ -420,6 +420,11 @@ run_w_final_vp_wmbp_online_impl(
   }
   beam::VmRetainedJoinAgenda<Semiring> vm_agenda;
   beam::VRetainedAgenda<Context> v_agenda;
+  if constexpr (numeric_lookup && std::is_same_v<std::decay_t<Context>, WFinalLogWeightContext>) {
+    if (widths.numeric_lookup_index && !widths.memory_observer && n == ctx.sequence_length())
+      v_agenda.enable_numeric_pending(n);
+  }
+
   beam::WmRetainedJoinAgenda<Semiring> wm_agenda;
   beam::WiRetainedJoinAgenda wi_agenda;
   beam::WipRetainedJoinAgenda<Semiring> wip_agenda;

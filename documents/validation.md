@@ -65,7 +65,11 @@ sampling or BPP are not interchangeable semantic references for inside.
   preserving all numeric states and finite-beam competition.
   [V agenda](../test/scfg2_v_retained_agenda_test.cc) checks complete expanded
   deductions and arrival order against shared generation, with nonempty
-  scaffolds, excluded positions, duplicate sources and column release.
+  scaffolds, excluded positions, duplicate sources and column release. It
+  covers every legal internal-loop wing pair and reconstructs absolute
+  coordinates beyond the byte range. The optional rolling numeric index is
+  compared with the map across column reuse, unsupported events and ownership
+  transfers; complete expanded fields and source order remain identical.
 - [Numeric exact execution](../test/scfg2_exact_numeric_execution_test.cc)
   compares reference execution with dense storage, zero-child cutoff and
   unused-VM omission, split selection and candidate-buffer reuse, separately
