@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -46,13 +47,22 @@ class WRetainedJoinAgenda {
       found->second.push_back(deduction);
     };
     const auto append = [&](const deductions::ItemKey &parent,
-                            grammar::RuleId rule,
+                            auto rule,
                             cand_pos_t k = -1,
                             cand_pos_t p = -1) {
       grammar::RuleSplit split{};
       split.k = k;
       split.p = p;
-      append_deduction(deductions::expand_basic_rule(parent, rule, split));
+      // Fixed binary tags select the existing shared schema. Extension and
+      // root decomposition keep the original runtime expansion route.
+      const auto deduction = [&] {
+        using RuleSelector = decltype(rule);
+        if constexpr (std::is_same_v<RuleSelector, grammar::RuleId>)
+          return deductions::expand_basic_rule(parent, rule, split);
+        else
+          return deductions::expand_basic_rule<RuleSelector::value>(parent, split);
+      }();
+      append_deduction(deduction);
     };
 
     append_deduction(deductions::make_zero_child_deduction(
@@ -70,7 +80,7 @@ class WRetainedJoinAgenda {
     }
 
     const auto append_branch = [&](grammar::NonTerminal family,
-                                   grammar::RuleId rule) {
+                                   auto rule) {
       for (const cand_pos_t k : retained_starts(family, j)) {
         ++stats_.direct_probes;
         const deductions::ItemKey direct{
@@ -97,8 +107,12 @@ class WRetainedJoinAgenda {
         }
       }
     };
-    append_branch(grammar::NonTerminal::V, grammar::RuleId::W_SPLIT_V);
-    append_branch(grammar::NonTerminal::WMB, grammar::RuleId::W_SPLIT_WMB);
+    append_branch(grammar::NonTerminal::V,
+                  std::integral_constant<grammar::RuleId,
+                                         grammar::RuleId::W_SPLIT_V>{});
+    append_branch(grammar::NonTerminal::WMB,
+                  std::integral_constant<grammar::RuleId,
+                                         grammar::RuleId::W_SPLIT_WMB>{});
 
     const auto ordinary_parents = parents_;
     for (const auto &right_parent : ordinary_parents) {
