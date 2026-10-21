@@ -2,6 +2,7 @@
 #define CPARTY_SCFG2_REPLAY_W_FINAL_VP_WMBP_ONLINE_HH
 
 #include "scfg2/beam/public_item_ranking.hh"
+#include "scfg2/beam/run_term_observer.hh"
 
 #include "scfg2/beam/be_left_right_frame_events.hh"
 #include "scfg2/beam/be_base_stack_retained_events.hh"
@@ -305,7 +306,8 @@ run_w_final_vp_wmbp_online_impl(
     const WFinalVpWmbpOnlineWidths &widths,
     CandidateObserverFn &&candidate_observer,
     DeductionValueTransformFn &&deduction_value_transform,
-    const WFinalPublicItemRanking &public_item_ranking = {}) {
+    const WFinalPublicItemRanking &public_item_ranking = {},
+    bool private_scaffold_root_relevant_only = false) {
   if (widths.memory_observer) {
     beam::MemoryObservation start;
     start.phase = widths.memory_phase;
@@ -318,6 +320,18 @@ run_w_final_vp_wmbp_online_impl(
   engine::AllLocalWeightModel<Context> weight(&ctx);
   constexpr bool numeric_lookup = std::is_same_v<Semiring, semirings::LogSumExpSemiring> ||
                                   std::is_same_v<Semiring, semirings::LogMaxSemiring>;
+  // Private opt-in used only with the scaffold-only generated-pair transform
+  // below. It is invalid for an unrestricted deduction-value transform.
+  // Keep every root-relevant family's complete finite competition. The
+  // ordinary kernel, custom Context and observed paths retain every family.
+  const bool omit_scaffold_dead_families = [&] {
+    if constexpr (std::is_same_v<Semiring, semirings::LogMaxSemiring> &&
+                  std::is_same_v<std::decay_t<Context>, WFinalLogWeightContext>) {
+      return private_scaffold_root_relevant_only && widths.numeric_lookup_index &&
+          !widths.memory_observer && !public_item_ranking && n == ctx.sequence_length() &&
+          beam::run_term_observer<double>() == nullptr;
+    } else return false;
+  }();
   engine::Chart<typename Semiring::value_type> chart(
       Semiring::zero(), [](const typename Semiring::value_type &value) {
         return Semiring::is_zero(value);
@@ -495,6 +509,28 @@ run_w_final_vp_wmbp_online_impl(
   observe_memory("initialized", 0);
 
   auto provider = [&](const deductions::ItemKey &item) {
+    if (omit_scaffold_dead_families) {
+      using N = grammar::NonTerminal;
+      switch (item.nonterminal) {
+        case N::WI:
+        case N::WIP:
+        case N::BE:
+        case N::VP:
+        case N::WMBP:
+        case N::WMBW:
+        case N::VPL:
+        case N::VPR:
+        case N::WMB:
+          // VP is exactly zero after the private generated-pair transform.
+          // All WMBP modes need VP; nonempty WMB needs WMBP and WMB_EMPTY
+          // is impossible in the standard Context. WMB is the only edge
+          // from these families into W/VM/WMv/WMp/WM/V, so the entire set
+          // is root-unconsumed in this pass, including for nonempty G.
+          return std::vector<deductions::Deduction>{};
+        default:
+          break;
+      }
+    }
     if (item.nonterminal == grammar::NonTerminal::V &&
         v_agenda.column() == item.j) {
       return v_agenda.take_for(item);
@@ -1373,7 +1409,8 @@ std::shared_ptr<const beam::ItemKeySet> scaffold_only_derivation_items(
         // With standard contexts VP is zero in this private G'=empty pass:
         // fixed endpoints are inadmissible and novel generated pairs are zeroed.
         // Every WMBP mode needs VP, so no nonempty WMB connects WI/WIP/BE to W.
-        // Keep all numeric states/frontiers; omit only unreachable choices.
+        // The private numeric path may omit these root-unconsumed families.
+        // Fallbacks keep their numeric states but still omit unreachable choices.
         if constexpr (std::is_same_v<Context, WFinalLogWeightContext> ||
                       std::is_same_v<Context, WFinalExactInsideContext>) {
           if (!widths.memory_observer) {
@@ -1412,7 +1449,7 @@ std::shared_ptr<const beam::ItemKeySet> scaffold_only_derivation_items(
         std::vector<engine::TracebackPair> generated;
         engine::append_deduction_generated_pairs(deduction, ctx, &generated);
         return generated.empty() ? contribution : Semiring::zero();
-      });
+      }, {}, true);
   retention.finish(dp.chart);
   if (widths.memory_observer) {
     auto observation = beam::chart_memory(beam::MemoryPhase::Scaffold,

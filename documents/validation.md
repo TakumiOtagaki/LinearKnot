@@ -79,9 +79,11 @@ when changing a timing driver.
   Memory-observed runs keep their original containers; the beam lookup witness
   also compares the unobserved numeric frontier against that path.
   [Scaffold forcing](../test/scfg2_beam_scaffold_forcing_test.cc) compares the
-  forced traceback set and iteration order against the full-choice observation
-  path; the private standard-context path omits only unreachable choice records,
-  preserving all numeric states and finite-beam competition.
+  forced traceback set, iteration and bucket order against the full-choice
+  observation path. The private standard log-numeric pass omits generation of
+  root-unconsumed families while preserving every V/VM/WMv/WMp/WM/W competitor.
+  Both closure policies, nonnumeric and memory-observed references, and active
+  run-term observation are checked; observed paths keep the complete kernel.
   [V agenda](../test/scfg2_v_retained_agenda_test.cc) checks complete expanded
   deductions and arrival order against shared generation, with nonempty
   scaffolds, excluded positions, duplicate sources and column release. It

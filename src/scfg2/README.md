@@ -83,6 +83,16 @@ Scaffold forcing, the pilot and the completed numeric guide inherit the
 option; other semirings and derivation representations retain their
 original storage policy.
 
+The private scaffold-only LogMax preparation uses that same kernel with novel
+generated pairs zeroed. In the standard unobserved log-numeric path, VP is then
+zero, every WMBP mode needs VP, and WMB_EMPTY is impossible. WMB therefore cannot
+return a contribution from WI/WIP/BE or the VP/WMB families to the root.
+Generation for those root-unconsumed families can be omitted in this pass,
+including with a nonempty scaffold. All V/VM/WMv/WMp/WM/W candidates and their
+finite-beam competition remain intact; in particular nonfixed VM states still
+compete. Generic, nonnumeric, memory-observed and run-term-observed paths retain
+the complete generation surface. Main inside, MFE and outer use the full kernel.
+
 During outer preparation, immutable canonical alpha rows can use a presence
 bitmap and prefix popcounts to locate the original sorted record directly.
 An indexed row spans no more bitmap words than retained records. Sparse or

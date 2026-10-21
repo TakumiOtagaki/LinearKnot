@@ -6,17 +6,23 @@
 // nonzero V item.
 
 #include "scfg2/weights/runtime_snapshot.hh"
+#include "scfg2/beam/run_term_observer.hh"
 #include "scfg2/replay/w_final_vp_wmbp_online.hh"
 
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <random>
 #include <string>
+#include <tuple>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -56,9 +62,37 @@ std::string scaffold(std::mt19937 &rng, std::string &seq, int branches, int long
   return g;
 }
 
+void check_forced_order(const cparty::scfg2::beam::ItemKeySet &actual,
+                        const cparty::scfg2::beam::ItemKeySet &reference) {
+  const cparty::scfg2::deductions::ItemKeyEq equal;
+  if (actual.size() != reference.size() || actual.bucket_count() != reference.bucket_count()) {
+    std::cerr << "forcing changed forced item count/buckets\n";
+    std::exit(EXIT_FAILURE);
+  }
+  auto expected = reference.begin();
+  for (const auto &item : actual) {
+    if (expected == reference.end() || !equal(item, *expected++)) {
+      std::cerr << "forcing changed forced full keys/iteration order\n";
+      std::exit(EXIT_FAILURE);
+    }
+  }
+  for (std::size_t bucket = 0; bucket < actual.bucket_count(); ++bucket) {
+    if (actual.bucket_size(bucket) != reference.bucket_size(bucket)) {
+      std::cerr << "forcing changed forced bucket occupancy\n";
+      std::exit(EXIT_FAILURE);
+    }
+    auto expected_item = reference.begin(bucket);
+    for (auto item = actual.begin(bucket); item != actual.end(bucket); ++item)
+      if (!equal(*item, *expected_item++)) {
+        std::cerr << "forcing changed forced local bucket order\n";
+        std::exit(EXIT_FAILURE);
+      }
+  }
+}
+
 // Memory-observed forcing retains the original complete choice store. A
 // no-op observer is therefore an independent public reference for the plain
-// choice-only optimization; every other context/width setting is identical.
+// private forcing optimization; every other context/width setting is identical.
 template <class Context>
 auto forcing_items_with_observer_check(
     Context &ctx, cand_pos_t n,
@@ -69,21 +103,84 @@ auto forcing_items_with_observer_check(
   auto observed_widths = widths;
   observed_widths.memory_observer = [](const sc::beam::MemoryObservation &) {};
   const auto observed = sc::replay::scaffold_only_derivation_items(ctx, n, observed_widths);
-  if (plain->size() != observed->size() || plain->bucket_count() != observed->bucket_count()) {
-    std::cerr << "memory observer changed forced item count/buckets\n";
-    std::exit(EXIT_FAILURE);
-  }
-  auto reference = observed->begin();
-  const sc::deductions::ItemKeyEq equal;
-  for (const auto &item : *plain) {
-    if (reference == observed->end() || !equal(item, *reference)) {
-      std::cerr << "memory observer changed forced full keys/iteration order\n";
-      std::exit(EXIT_FAILURE);
-    }
-    ++reference;
-  }
+  check_forced_order(*plain, *observed);
   ++checked;
   return plain;
+}
+
+// One ordered stream covers all observer callback kinds, including inactive
+// alias fields. Copy values during the callback; never retain borrowed aliases.
+struct RunTerms : cparty::scfg2::beam::RunTermObserver<double> {
+  using Rule = cparty::scfg2::grammar::RuleId;
+  using Event = std::tuple<int, Rule, cand_pos_t, cand_pos_t,
+                           std::uint64_t, std::uint64_t, bool, bool>;
+  std::vector<Event> events;
+  static std::uint64_t bits(double value) {
+    static_assert(sizeof(value) == sizeof(std::uint64_t));
+    std::uint64_t out;
+    std::memcpy(&out, &value, sizeof(out));
+    return out;
+  }
+  void on_run_term(Rule rule, cand_pos_t lo, cand_pos_t hi, const double &term) override {
+    events.emplace_back(0, rule, lo, hi, bits(term), 0, false, false);
+  }
+  void on_vpr_run_cell(cand_pos_t i, cand_pos_t t, const double &total, bool carried) override {
+    events.emplace_back(1, Rule{}, i, t, bits(total), 0, false, carried);
+  }
+  void on_left_run_unit(Rule rule, cand_pos_t j, cand_pos_t base,
+                        const double &unit, const double *alias, bool linked) override {
+    events.emplace_back(2, rule, j, base, bits(unit), alias ? bits(*alias) : 0,
+                        alias != nullptr, linked);
+  }
+};
+
+void numeric_forcing_checks(cparty::scfg2::replay::WFinalLogWeightContext &ctx,
+                            cand_pos_t n,
+                            cparty::scfg2::replay::WFinalVpWmbpOnlineWidths widths,
+                            std::size_t &checked) {
+  namespace sc = cparty::scfg2;
+  widths.numeric_lookup_index = false;
+  const auto reference = sc::replay::scaffold_only_derivation_items(ctx, n, widths);
+  auto numeric_widths = widths;
+  numeric_widths.numeric_lookup_index = true;
+  const auto actual = sc::replay::scaffold_only_derivation_items(ctx, n, numeric_widths);
+  check_forced_order(*actual, *reference);
+  auto observed_widths = numeric_widths;
+  bool observed_full_family = false;
+  observed_widths.memory_observer = [&](const sc::beam::MemoryObservation &event) {
+    if (std::strcmp(event.event, "forward_end") != 0) return;
+    for (const auto &family : event.families)
+      if (family.nonterminal == sc::grammar::NonTerminal::WI && family.live_items)
+        observed_full_family = true;
+  };
+  const auto observed = sc::replay::scaffold_only_derivation_items(ctx, n, observed_widths);
+  check_forced_order(*observed, *reference);
+  if (reference->empty() || !observed_full_family) {
+    std::cerr << "numeric forcing/memory fallback witness is vacuous\n";
+    std::exit(EXIT_FAILURE);
+  }
+
+  // Install the same collector for both lookup settings. An active observer
+  // must preserve the complete forcing path and its callback values/order.
+  RunTerms recorder;
+  std::shared_ptr<const sc::beam::ItemKeySet> old_terms, new_terms;
+  {
+    sc::beam::ScopedRunTermObserver<double> scope(&recorder);
+    old_terms = sc::replay::scaffold_only_derivation_items(ctx, n, widths);
+  }
+  auto expected_events = std::move(recorder.events);
+  recorder.events.clear();
+  {
+    sc::beam::ScopedRunTermObserver<double> scope(&recorder);
+    new_terms = sc::replay::scaffold_only_derivation_items(ctx, n, numeric_widths);
+  }
+  check_forced_order(*old_terms, *reference);
+  check_forced_order(*new_terms, *reference);
+  if (expected_events.empty() || recorder.events != expected_events) {
+    std::cerr << "numeric forcing changed active run observer event order/value bits\n";
+    std::exit(EXIT_FAILURE);
+  }
+  ++checked;
 }
 
 }  // namespace
@@ -146,8 +243,7 @@ int main(int argc, char **argv) {
         for (const auto policy : {WmbClosurePolicy::LegacyCompatible,
                                   WmbClosurePolicy::RequireWeakClosure}) {
           replay::WFinalLogWeightContext log_ctx(owner, policy);
-          (void)forcing_items_with_observer_check(
-              log_ctx, n, forcing_widths, forcing_observer_checks);
+          numeric_forcing_checks(log_ctx, n, forcing_widths, forcing_observer_checks);
         }
       }
       std::map<std::pair<grammar::NonTerminal, cand_pos_t>, std::size_t> counts;
