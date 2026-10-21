@@ -74,6 +74,11 @@ The sparse chart remains authoritative for values, presence and iteration;
 the index mirrors checkpointed doubles in per-family, per-end rows. BE and
 noncanonical keys use the original full-key lookup. Rows shrink after
 pruning, and an index allocation failure falls back to the sparse chart.
+Probe keys and values occupy separate arrays. After a complete selection,
+standard numeric runs without memory observations can replace a row with
+a direct interval if its extent fits the existing hash allocation. Presence
+is independent of value bits. A later update restores hashing once; failed
+optional conversion keeps the old row. W converts only after its root update.
 Scaffold forcing, the pilot and the completed numeric guide inherit the
 option; other semirings and derivation representations retain their
 original storage policy.
@@ -102,6 +107,10 @@ directly in MAXLOOP+2 rolling end columns. Each occupied cell releases its entir
 buffer on consumption or column expiry. Column stamps prevent aliasing;
 unsupported events and optional allocation failure use the original map.
 Memory observations and generic contexts retain the map representation.
+The same numeric opt-in reuses immutable turn, left-prefix and child-pair
+queries across V internal-loop parents. A shared predicate still checks
+all bounds and parent/right-prefix conditions. Custom contexts retain their
+original query order and exception points.
 Completion ranking reads the immutable sorted alpha rows and uses an indexed heap for
 bounded maxima, reusing a deduction buffer between fully generated parents.
 Its canonical map mutation order, score/key cutoff, equal

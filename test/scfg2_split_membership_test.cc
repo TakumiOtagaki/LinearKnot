@@ -16,6 +16,7 @@
 #include <iostream>
 #include <random>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -25,6 +26,70 @@ namespace {
 
 using namespace cparty::scfg2;
 using SplitSet = std::set<std::pair<cand_pos_t, cand_pos_t>>;
+
+using QueryTrace = std::vector<std::tuple<char, cand_pos_t, cand_pos_t>>;
+struct QueryFailure {};
+void require_query(bool ok, const char *message) {
+  if (!ok) throw std::runtime_error(message);
+}
+struct RecordingPairability final : deductions::PairabilityContext {
+  const deductions::PairabilityContext &base;
+  mutable QueryTrace trace;
+  long fail = -1;
+  explicit RecordingPairability(const deductions::PairabilityContext &ctx) : base(ctx) {}
+  void record(char query, cand_pos_t a = 0, cand_pos_t b = 0) const {
+    trace.emplace_back(query, a, b);
+    if (fail >= 0 && trace.size() - 1 == static_cast<std::size_t>(fail)) throw QueryFailure{};
+  }
+  cand_pos_t turn() const override { record('t'); return base.turn(); }
+  cand_pos_t sequence_length() const override { record('n'); return base.sequence_length(); }
+  cand_pos_t pair_partner(cand_pos_t p) const override { record('p', p); return base.pair_partner(p); }
+  cand_pos_t unpaired_prefix(cand_pos_t p) const override { record('u', p); return base.unpaired_prefix(p); }
+  bool can_pair(cand_pos_t i, cand_pos_t j) const override {
+    record('c', i, j);
+    require_query(i >= 1 && i <= base.sequence_length() && j >= 1 && j <= base.sequence_length(),
+                  "generic V predicate queried an out-of-bounds child");
+    return base.can_pair(i, j);
+  }
+};
+
+// Generic contexts can observe virtual reads and exceptions. Lock the public
+// predicate's protocol directly, without a second predicate implementation.
+void generic_v_query_protocol() {
+  const std::string sequence = "GGGGGCCCCCGG";
+  const QueryTrace full{{'t', 0, 0}, {'p', 1, 0}, {'p', 12, 0}, {'t', 0, 0},
+                        {'u', 2, 0}, {'t', 0, 0}, {'u', 11, 0}, {'c', 3, 9}};
+  const auto prefix = [&](std::size_t n) { return QueryTrace(full.begin(), full.begin() + n); };
+  const auto check = [&](const std::string &scaffold, cand_pos_t j, cand_pos_t k,
+                         cand_pos_t l, bool want, const QueryTrace &expected) {
+    weights::RuntimeSnapshot owner(sequence, scaffold);
+    replay::WFinalLogWeightContext base(owner);
+    RecordingPairability ctx(base);
+    const deductions::ItemKey parent{grammar::NonTerminal::V, 1, j, -1, -1};
+    require_query(deductions::exact_v_internal_split_allows(parent, k, l, ctx) == want &&
+                      ctx.trace == expected, "generic V predicate changed query order/short circuit");
+    for (std::size_t site = 0; site < expected.size(); ++site) {
+      ctx.trace.clear(); ctx.fail = static_cast<long>(site);
+      bool threw = false;
+      try { deductions::exact_v_internal_split_allows(parent, k, l, ctx); }
+      catch (const QueryFailure &) { threw = true; }
+      require_query(threw && ctx.trace == QueryTrace(expected.begin(), expected.begin() + site + 1),
+                    "generic V predicate changed a throwing query prefix");
+    }
+  };
+  check("............", 12, 3, 9, true, full);
+  check("............", 4, 3, 3, false, {{'t', 0, 0}}); // TURN
+  check("(....)......", 12, 3, 9, false, prefix(3)); // fixed left endpoint
+  check("......(....)", 12, 3, 9, false, prefix(3)); // fixed right endpoint
+  check("............", 12, 0, 9, false, prefix(4)); // k bound, before child query
+  check(".(...)......", 12, 3, 9, false, prefix(5)); // left wing not unpaired
+  check("............", 12, 3, 6, false, prefix(6)); // l/TURN bound
+  check("............", 12, 3, 13, false, prefix(6)); // l beyond owner, never queried
+  check("......(...).", 12, 3, 9, false, prefix(7)); // right wing not unpaired
+  check("............", 12, 3, 11, false,
+        {{'t', 0, 0}, {'p', 1, 0}, {'p', 12, 0}, {'t', 0, 0},
+         {'u', 2, 0}, {'t', 0, 0}, {'u', 11, 0}, {'c', 3, 11}}); // cannot pair
+}
 
 char complement(char c) {
   switch (c) {
@@ -113,6 +178,7 @@ bool check_selected(const deductions::ItemKey &parent,
 
 int main(int argc, char **argv) {
   setenv("CPARTY_FIXED_ENERGY_PARAM_FILE", "params/rna_Turner04.par", 1);
+  generic_v_query_protocol();
   const int cases = argc > 1 ? std::atoi(argv[1]) : 25;
   std::mt19937 rng(20261009);
   std::size_t checked = 0, positives = 0;
@@ -125,6 +191,7 @@ int main(int argc, char **argv) {
     cparty::scfg2::weights::RuntimeSnapshot owner(
       seq, g);
     replay::WFinalExactInsideContext ctx(owner);
+    replay::WFinalLogWeightContext numeric_ctx(owner);
     const auto schedule = engine::build_pkfree_basic_exact_schedule(n, ctx);
     constexpr auto family_count = engine::basic_exact_span_family_order().size();
     std::array<int, family_count> phase{};
@@ -158,6 +225,14 @@ int main(int argc, char **argv) {
                   nt == grammar::NonTerminal::V
                       ? deductions::exact_v_internal_split_allows(parent, k, l, ctx)
                       : deductions::exact_vp_internal_loop_split_allows(parent, k, l, ctx);
+              if (nt == grammar::NonTerminal::V) {
+                deductions::ExactVInternalChildQueryCache cache(
+                    numeric_ctx, k, l, numeric_ctx.unpaired_prefix(k - 1));
+                if (deductions::exact_v_internal_split_allows_impl(parent, k, l, cache) != got) {
+                  report("cached V_INTERNAL", g, parent, k, l, got);
+                  return EXIT_FAILURE;
+                }
+              }
               const bool expected = want.count({k, l}) > 0;
               ++checked;
               positives += expected;

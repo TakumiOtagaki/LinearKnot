@@ -322,6 +322,18 @@ run_w_final_vp_wmbp_online_impl(
       Semiring::zero(), [](const typename Semiring::value_type &value) {
         return Semiring::is_zero(value);
       }, 0, numeric_lookup && widths.numeric_lookup_index ? n : 0);
+  // Seal only the standard, unobserved numeric mirror at the existing
+  // complete-family commit boundary. Candidate/weight observations are intact.
+  const bool interval_lookup = [&] {
+    if constexpr (numeric_lookup &&
+                  std::is_same_v<std::decay_t<Context>, WFinalLogWeightContext>)
+      return widths.numeric_lookup_index && !widths.memory_observer &&
+          n == ctx.sequence_length();
+    else return false;
+  }();
+  const auto seal_primary_lookup_row = [&](grammar::NonTerminal family, cand_pos_t end) {
+    if (interval_lookup) chart.seal_primary_lookup_row(family, end);
+  };
   beam::TopWidthVpItemSelection vp_selection(widths.vp);
   beam::TopWidthWmbpItemSelection wmbp_selection(widths.wmbp);
   beam::TopWidthBeItemSelection be_selection(widths.be);
@@ -883,6 +895,7 @@ run_w_final_vp_wmbp_online_impl(
       update,
       [&](cand_pos_t j) {
         vp_selection.commit_column(j, chart, Semiring::zero());
+        seal_primary_lookup_row(grammar::NonTerminal::VP, j);
         vp_loop_events.observe_committed_column(
             j, vp_selection.selected_starts(j), n, ctx);
         vp_loop_events.release_column(j);
@@ -952,6 +965,7 @@ run_w_final_vp_wmbp_online_impl(
       },
       [&](cand_pos_t j) {
         wmbp_selection.commit_column(j, chart, Semiring::zero());
+        seal_primary_lookup_row(grammar::NonTerminal::WMBP, j);
       },
       [&](grammar::NonTerminal nonterminal, cand_pos_t j)
           -> std::vector<cand_pos_t> {
@@ -1177,6 +1191,9 @@ run_w_final_vp_wmbp_online_impl(
           default:
             break;
         }
+        // W is sealed here after its root update and final commit, never
+        // during the earlier nonroot commit used by the root's suffix reads.
+        seal_primary_lookup_row(nonterminal, j);
         if (nonterminal == grammar::NonTerminal::W &&
             widths.memory_column_interval &&
             static_cast<std::size_t>(j) % widths.memory_column_interval == 0)

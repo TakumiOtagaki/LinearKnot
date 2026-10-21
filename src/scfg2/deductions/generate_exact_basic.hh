@@ -157,14 +157,21 @@ inline cand_pos_t root_wmb_open(const PairabilityContext &ctx,
   return p;
 }
 
-inline bool exact_v_pairing_state_allows(const PairabilityContext &ctx,
-                                         cand_pos_t i,
-                                         cand_pos_t j) {
+template <class QueryContext>
+inline bool exact_v_pairing_state_allows_impl(const QueryContext &ctx,
+                                              cand_pos_t i,
+                                              cand_pos_t j) {
   const cand_pos_t pair_i = ctx.pair_partner(i);
   const cand_pos_t pair_j = ctx.pair_partner(j);
   const bool unpaired = pair_i < -1 && pair_j < -1;
   const bool paired = pair_i == j && pair_j == i;
   return paired || unpaired;
+}
+
+inline bool exact_v_pairing_state_allows(const PairabilityContext &ctx,
+                                         cand_pos_t i,
+                                         cand_pos_t j) {
+  return exact_v_pairing_state_allows_impl(ctx, i, j);
 }
 
 inline bool exact_v_hairpin_allows(const PairabilityContext &ctx,
@@ -658,12 +665,13 @@ inline void append_exact_wmb_split_for_wmbp_end(
 // before the is_valid filter; scfg2_split_membership_test checks this
 // against the generators.
 
-inline bool exact_v_internal_split_allows(const ItemKey &parent,
-                                          cand_pos_t k,
-                                          cand_pos_t l,
-                                          const PairabilityContext &ctx) {
+template <class QueryContext>
+inline bool exact_v_internal_split_allows_impl(const ItemKey &parent,
+                                               cand_pos_t k,
+                                               cand_pos_t l,
+                                               const QueryContext &ctx) {
   if (parent.j - parent.i - 1 < ctx.turn() ||
-      !exact_v_pairing_state_allows(ctx, parent.i, parent.j)) {
+      !exact_v_pairing_state_allows_impl(ctx, parent.i, parent.j)) {
     return false;
   }
   const cand_pos_t max_k = std::min(parent.j - ctx.turn() - 2, parent.i + MAXLOOP + 1);
@@ -675,6 +683,41 @@ inline bool exact_v_internal_split_allows(const ItemKey &parent,
   if (ctx.unpaired_prefix(parent.j - 1) < (parent.j - l - 1)) return false;
   return ctx.can_pair(k, l);
 }
+
+inline bool exact_v_internal_split_allows(const ItemKey &parent,
+                                          cand_pos_t k,
+                                          cand_pos_t l,
+                                          const PairabilityContext &ctx) {
+  // Keep the generic context's original short-circuit and query trace.
+  return exact_v_internal_split_allows_impl(parent, k, l, ctx);
+}
+
+// A query view for one certified, in-bounds child of a known pure context.
+// The V agenda's explicit standard-context opt-in establishes that contract;
+// ordinary/custom contexts continue through the public wrapper above.
+template <class Context>
+class ExactVInternalChildQueryCache {
+ public:
+  ExactVInternalChildQueryCache(const Context &ctx,
+                               cand_pos_t k, cand_pos_t l,
+                               cand_pos_t left_up)
+      : ctx_(ctx), k_(k), l_(l), turn_(ctx.turn()), left_up_(left_up),
+        pairable_(ctx.can_pair(k, l)) {}
+
+  cand_pos_t turn() const { return turn_; }
+  cand_pos_t pair_partner(cand_pos_t pos) const { return ctx_.pair_partner(pos); }
+  cand_pos_t unpaired_prefix(cand_pos_t pos) const {
+    return pos == k_ - 1 ? left_up_ : ctx_.unpaired_prefix(pos);
+  }
+  bool can_pair(cand_pos_t k, cand_pos_t l) const {
+    return k == k_ && l == l_ ? pairable_ : ctx_.can_pair(k, l);
+  }
+
+ private:
+  const Context &ctx_;
+  cand_pos_t k_, l_, turn_, left_up_;
+  bool pairable_;
+};
 
 inline bool exact_vp_internal_loop_split_allows(const ItemKey &parent,
                                                 cand_pos_t k,

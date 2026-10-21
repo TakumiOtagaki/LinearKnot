@@ -14,9 +14,14 @@
 #include <new>
 #include <optional>
 #include <stdexcept>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
+namespace cparty::scfg2::replay {
+template <bool LogDomain> class WFinalInsideContext;
+}
 
 namespace cparty::scfg2::beam {
 
@@ -133,8 +138,19 @@ class VRetainedAgenda {
       // The shared split guard requires left <= unpaired_prefix(child_i-1)
       // and left+right <= MAXLOOP. Exclude only the necessarily rejected part
       // of the rectangular window; the final shared predicate still runs.
-      const cand_pos_t max_left = std::min<cand_pos_t>(
-          MAXLOOP, ctx.unpaired_prefix(child_i - 1));
+      const cand_pos_t left_up = ctx.unpaired_prefix(child_i - 1);
+      const cand_pos_t max_left = std::min<cand_pos_t>(MAXLOOP, left_up);
+      std::optional<deductions::ExactVInternalChildQueryCache<Context>> child_queries;
+      if constexpr (std::is_same_v<std::decay_t<Context>,
+                                  replay::WFinalInsideContext<true>>) {
+        // Ring enablement is itself gated by numeric lookup + no memory
+        // observation at the standard runner boundary. Recheck this event's
+        // complete domain before the unchecked base-array pairing query.
+        if (numeric_pending_ && numeric_pending_->n > 0 &&
+            n == numeric_pending_->n && child_i >= 1 && child_i < child_j &&
+            child_j <= n && n == ctx.sequence_length())
+          child_queries.emplace(ctx, child_i, child_j, left_up);
+      }
       const cand_pos_t min_parent_i =
           std::max<cand_pos_t>(1, child_i - max_left - 1);
       for (cand_pos_t parent_i = min_parent_i;
@@ -149,7 +165,8 @@ class VRetainedAgenda {
           ++stats_.internal_parent_probes;
           const deductions::ItemKey parent{
               grammar::NonTerminal::V, parent_i, parent_j, -1, -1};
-          append_generated<grammar::RuleId::V_INTERNAL>(parent, &child, ctx);
+          append_generated<grammar::RuleId::V_INTERNAL>(
+              parent, &child, ctx, child_queries ? &*child_queries : nullptr);
         }
       }
     }
@@ -232,15 +249,21 @@ class VRetainedAgenda {
   template <grammar::RuleId Rule>
   void append_generated(const deductions::ItemKey &parent,
                         const deductions::ItemKey *required_child,
-                        Context &ctx) {
+                        Context &ctx,
+                        const deductions::ExactVInternalChildQueryCache<Context> *child_queries = nullptr) {
     static_assert(Rule == grammar::RuleId::V_HAIRPIN ||
                   Rule == grammar::RuleId::V_INTERNAL || Rule == grammar::RuleId::V_VM);
     grammar::RuleSplit split{};
     if constexpr (Rule == grammar::RuleId::V_INTERNAL) {
       // One (parent, child) probe: test the split directly instead of
       // regenerating every internal loop of the parent (O(L^2) per probe).
-      if (required_child == nullptr || !deductions::exact_v_internal_split_allows(
-              parent, required_child->i, required_child->j, ctx)) return;
+      if (required_child == nullptr) return;
+      const bool allowed = child_queries
+          ? deductions::exact_v_internal_split_allows_impl(
+                parent, required_child->i, required_child->j, *child_queries)
+          : deductions::exact_v_internal_split_allows(
+                parent, required_child->i, required_child->j, ctx);
+      if (!allowed) return;
       split.k = required_child->i;
       split.l = required_child->j;
     } else if constexpr (Rule == grammar::RuleId::V_HAIRPIN) {

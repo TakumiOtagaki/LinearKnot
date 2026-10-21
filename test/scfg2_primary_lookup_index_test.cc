@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <cstdint>
 #include <cstdlib>
 #include <exception>
 #include <iostream>
@@ -277,6 +278,87 @@ void erased_columns_release_capacity() {
   require(index.size() == 0 && index.active_rows() == 0 && index.allocated_capacity() == 0 &&
           index.memory_bytes() == headers, "retired columns kept allocated slot buffers");
 }
+
+// This explicit boundary is the only promotion point. The independent map
+// and existing comparison/count helpers cover both representations.
+void post_selection_interval_contract() {
+  constexpr cand_pos_t n = 32;
+  const auto key = [](cand_pos_t i) { return Key{NT::VP, i, n, -1, -1}; };
+  std::uint64_t nan_pattern = UINT64_C(0x7ff8000000000517);
+  double nan;
+  std::memcpy(&nan, &nan_pattern, sizeof(nan));
+  const double defaults[]{-0.0, 0.0, -std::numeric_limits<double>::infinity(),
+      std::numeric_limits<double>::infinity(), 17.25,
+      std::numeric_limits<double>::denorm_min(), nan};
+  const auto check_row = [&](const Index &index, const Reference &reference) {
+    for (double default_value : defaults)
+      for (cand_pos_t i = 1; i <= n; ++i)
+        compare(index, reference, key(i), default_value);
+    for (const auto &other : std::vector<Key>{{NT::BE, 5, n, 6, 9},
+             {NT::VP, 5, n, 0, -1}, {NT::VP, 5, n, -1, 0},
+             {NT::VP, 0, n, -1, -1}, {NT::VP, 1, n + 1, -1, -1}})
+      compare(index, reference, other, nan);
+    check_counts(index, reference);
+  };
+  Index index(n);
+  Reference reference;
+  const auto headers = index.memory_bytes();
+  set(index, reference, key(5), -0.0);
+  set(index, reference, key(7), nan);
+  set(index, reference, key(8), -std::numeric_limits<double>::infinity());
+  set(index, reference, key(9), std::numeric_limits<double>::infinity());
+  const auto hash_bytes = index.memory_bytes();
+  index.seal_row(NT::VP, n);
+  const auto direct_bytes = index.memory_bytes();
+  require(direct_bytes < hash_bytes && index.row_capacity(key(1)) == 5,
+          "eligible interval did not replace its hash slots");
+  check_row(index, reference); // Hole 6 and both sides use exact default bits.
+  index.seal_row(NT::VP, n);
+  index.seal_row(NT::BE, n);
+  index.seal_row(NT::VP, 0);
+  index.seal_row(NT::VP, n + 1);
+  require(index.memory_bytes() == direct_bytes, "repeated/unsupported seal changed storage");
+
+  auto copied = index;
+  const Reference sealed_reference = reference;
+  auto moved = std::move(copied);
+  require(copied.length() == 0 && copied.memory_bytes() == 0 && copied.size() == 0,
+          "moving an interval retained stale source metadata");
+  Index assigned(3);
+  assigned.set({NT::W, 1, 3, -1, -1}, 4.0);
+  assigned = moved;
+  check_row(moved, sealed_reference);
+  check_row(assigned, sealed_reference);
+  set(index, reference, key(7), -7.25); // Existing-key mutation demotes once.
+  require(index.memory_bytes() == hash_bytes, "interval mutation did not restore hash storage");
+  index.seal_row(NT::VP, n);
+  require(index.memory_bytes() == hash_bytes, "mutated interval was promoted a second time");
+  set(index, reference, key(1), -1e300); // New key outside the old interval.
+  check_row(index, reference);
+  check_row(moved, sealed_reference); // Copies retain independent direct owners.
+  check_row(assigned, sealed_reference);
+
+  Reference erased = sealed_reference;
+  for (const auto i : {7, 5, 9, 8}) {
+    erase(assigned, erased, key(i));
+    check_row(assigned, erased);
+  }
+  require(assigned.memory_bytes() == headers && assigned.allocated_capacity() == 0,
+          "erasing an interval retained direct/hash capacity");
+
+  Index sparse(n);
+  Reference sparse_reference;
+  set(sparse, sparse_reference, key(1), -0.0);
+  set(sparse, sparse_reference, key(n), 17.25);
+  const auto sparse_bytes = sparse.memory_bytes();
+  sparse.seal_row(NT::VP, n); // Extent 32 exceeds the current eight hash slots.
+  require(sparse.memory_bytes() == sparse_bytes, "wide sparse row became a dense interval");
+  erase(sparse, sparse_reference, key(1));
+  sparse.seal_row(NT::VP, n);
+  require(sparse.memory_bytes() == sparse_bytes, "an ineligible row retried its seal");
+  check_row(sparse, sparse_reference);
+}
+
 }  // namespace
 
 int main() {
@@ -285,6 +367,7 @@ int main() {
     collisions_and_wrap();
     random_updates_and_ownership();
     erased_columns_release_capacity();
+    post_selection_interval_contract();
     std::cout << "scfg2_primary_lookup_index=ok comparisons=" << comparisons << '\n';
   } catch (const std::exception &error) {
     std::cerr << error.what() << '\n';

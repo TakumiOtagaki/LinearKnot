@@ -42,7 +42,9 @@ sampling or BPP are not interchangeable semantic references for inside.
   including full retained chart iteration, value bits, choices, ties and
   work counts. Storage tests cover [row growth and deletion](../test/scfg2_primary_lookup_index_test.cc)
   and [chart fallback and ownership](../test/scfg2_numeric_primary_lookup_test.cc),
-  including allocation failure after a canonical map update.
+  including allocation failure after a canonical map update. Direct intervals
+  cover holes, arbitrary default/value bits, later mutations, independent
+  copies and both key/value allocation failures during conversion or growth.
 - [Completion lookup](../test/scfg2_bounded_outer_alpha_lookup_test.cc) checks
   full-key and absent-key values against the original alpha map, as well as
   bitmap ranks across word boundaries, nonfinite and signed-zero values,
@@ -70,6 +72,10 @@ sampling or BPP are not interchangeable semantic references for inside.
   coordinates beyond the byte range. The optional rolling numeric index is
   compared with the map across column reuse, unsupported events and ownership
   transfers; complete expanded fields and source order remain identical.
+  Custom contexts also compare their complete query trace with numeric
+  pending storage enabled and disabled. [Split membership](../test/scfg2_split_membership_test.cc)
+  checks cached V predicates against full generation and locks the generic
+  predicate's query order, short circuits and throwing-query prefixes.
 - [Numeric exact execution](../test/scfg2_exact_numeric_execution_test.cc)
   compares reference execution with dense storage, zero-child cutoff and
   unused-VM omission, split selection and candidate-buffer reuse, separately

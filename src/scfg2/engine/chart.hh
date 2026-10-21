@@ -124,6 +124,13 @@ class Chart {
   }
   cand_pos_t primary_lookup_length() const { return primary_lookup_ ? primary_lookup_->length() : 0; }
   std::size_t primary_lookup_bytes() const { return primary_lookup_ ? primary_lookup_->memory_bytes() : 0; }
+  // Optional numeric point-mirror compaction after a complete selection.
+  // Generic values and charts without a mirror retain their existing path.
+  void seal_primary_lookup_row(grammar::NonTerminal family, cand_pos_t end) {
+    if constexpr (std::is_same_v<Value, double>) {
+      if (primary_lookup_) primary_lookup_->seal_row(family, end);
+    }
+  }
   std::size_t size() const { return values_.size() + (dense_ ? dense_->count : 0); }
 
   Value get(const key_type &key) const {

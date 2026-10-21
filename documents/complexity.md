@@ -52,13 +52,22 @@ primary keys: O(n) row headers and geometrically sized open-addressed rows.
 Rows shrink after erasure and release their slots when empty, so old
 candidate peaks do not accumulate into a dense n-by-n allocation. The
 canonical sparse map remains the source of presence and iteration order.
+Hash rows keep keys and values in separate arrays. A completed row may use a
+direct interval only when its extent is no larger than its current hash
+capacity, already bounded by eight times its live keys. Each row attempts
+conversion once and can return to hashing once on a later update. Each
+conversion takes time linear in that row's live keys; temporary arrays obey
+the same bound, preserving O(n+L) space. Presence is stored independently
+of value bits.
 Queued V sources store a byte rule tag and two bounded wing lengths; their
 duplicate bitmap has (MAXLOOP+1)(MAXLOOP+2)/2 bits per live parent. The optional
 numeric pending index uses O(n MAXLOOP) fixed metadata across MAXLOOP+2
 rolling end columns, with source buffers only in occupied cells. Consumption
 and column expiry release these buffers, so historical peaks do not accumulate.
 With fixed MAXLOOP this adds O(n) metadata; generic and memory-observed runs
-keep the sparse map. Bounded
+keep the sparse map. Standard numeric V internal-loop generation can reuse
+immutable child queries in O(1) scratch per child, while retaining the shared
+predicate and the same parent-probe count. Bounded
 completion maxima use an indexed heap with O(log(b+2)) updates; querying
 immutable sorted alpha rows costs O(log(b+2)) in the fallback path.
 Canonical rows can use O(1) membership/rank lookup in a 64-position-word

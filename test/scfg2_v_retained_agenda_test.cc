@@ -397,6 +397,45 @@ void drain_pending_column(NumericVAgenda &a, NumericVAgenda &b, cand_pos_t j) {
   }
 }
 
+// A custom context may observe queries even when it delegates numeric answers
+// to the standard owner. Numeric pending storage must not opt it into caching.
+struct GenericVQueries final : deductions::PairabilityContext {
+  const deductions::PairabilityContext &base;
+  mutable std::vector<std::tuple<char, cand_pos_t, cand_pos_t>> trace;
+  explicit GenericVQueries(const deductions::PairabilityContext &ctx) : base(ctx) {}
+  cand_pos_t turn() const override { trace.emplace_back('t', 0, 0); return base.turn(); }
+  cand_pos_t sequence_length() const override { trace.emplace_back('n', 0, 0); return base.sequence_length(); }
+  cand_pos_t pair_partner(cand_pos_t p) const override { trace.emplace_back('p', p, 0); return base.pair_partner(p); }
+  cand_pos_t unpaired_prefix(cand_pos_t p) const override { trace.emplace_back('u', p, 0); return base.unpaired_prefix(p); }
+  bool can_pair(cand_pos_t i, cand_pos_t j) const override {
+    trace.emplace_back('c', i, j); return base.can_pair(i, j);
+  }
+};
+void generic_pending_query_protocol(const deductions::PairabilityContext &base) {
+  GenericVQueries a(base), b(base);
+  beam::VRetainedAgenda<GenericVQueries> plain, ring;
+  const auto n = base.sequence_length();
+  require(ring.enable_numeric_pending(n), "generic numeric V fixture did not enable");
+  plain.observe_committed_v_column(8, {3, 3}, n, a);
+  ring.observe_committed_v_column(8, {3, 3}, n, b);
+  require(a.trace == b.trace && plain.pending_parent_count() > 0 &&
+              plain.pending_parent_count() == ring.pending_parent_count() &&
+              plain.stats().internal_parent_probes == ring.stats().internal_parent_probes &&
+              plain.stats().internal_sources == ring.stats().internal_sources,
+          "numeric V storage changed generic-context queries or sources");
+  for (cand_pos_t j = 1; j <= n; ++j) {
+    for (cand_pos_t i = 1; i <= j; ++i) {
+      const Key parent{grammar::NonTerminal::V, i, j, -1, -1};
+      const auto expected = plain.take_for(parent), actual = ring.take_for(parent);
+      require(actual.size() == expected.size(), "generic numeric V support differs");
+      for (std::size_t c = 0; c < actual.size(); ++c)
+        require(same_source(actual[c], expected[c]), "generic numeric V fields/order differ");
+    }
+  }
+  require(!plain.pending_parent_count() && !ring.pending_parent_count(),
+          "generic numeric V drain retained an owner");
+}
+
 // The ordinary packed-map path is a second owner for the same shared sources.
 // Keep live colliding columns, mix out-of-window events back into the current
 // window, then compare every public source field and lifetime observation.
@@ -408,6 +447,7 @@ void numeric_pending_protocol() {
   for (int i = 0; i < 128; ++i) sequence += i % 2 ? 'C' : 'G';
   weights::RuntimeSnapshot owner(sequence, std::string(sequence.size(), '.'));
   Context ctx(owner);
+  generic_pending_query_protocol(ctx);
   Agenda ring, packed;
   require(!ring.enable_numeric_pending(0) && !ring.enable_numeric_pending(-1),
           "numeric V queue accepted an invalid sequence domain");
