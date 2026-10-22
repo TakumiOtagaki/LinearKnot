@@ -31,7 +31,8 @@ def main():
     environment.pop("CPARTY_FIXED_ENERGY_PARAM_FILE", None)
     result = subprocess.run([str(executable), *arguments], cwd=output, env=environment,
                             capture_output=True, text=True, check=True, timeout=180)
-    (output / "loop_profile.txt").write_text(result.stdout)
+    # This example has one record; omit the CLI's trailing blank separator.
+    (output / "loop_profile.txt").write_text(result.stdout.rstrip("\n") + "\n")
     if result.stderr:
         print(result.stderr, end="")
     display = ["linearknot", *arguments]
@@ -45,6 +46,7 @@ def main():
         "scope": "full 388-nt RNA, beam=200, outer ranking, pilot exponent=2/3, local caps=200",
         "command": display,
         "stdout": "loop_profile.txt",
+        "stdout_normalization": "one terminal newline for the single record",
     }
     (output / "run.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print("example_outputs=" + str(output))

@@ -1,7 +1,7 @@
 {
   "repository_version": "0.1.1",
   "input_sha256": "897919ac1bed916f670363299b4002971fb8479146127b75b0dae6508b21ce1b",
-  "output_sha256": "9c94caf82b31fb7317c15fc74ed8b7ab5d64773f4608c8c65f2632a2a2c302cd",
+  "output_sha256": "e3f7eca1db39e230f297eb01ec788b4a4ab872d40b8f5a6f51d0def2a8bd034f",
   "binary_sha256": "0d7d5dc82da37e177d216d82538f7649ad19191126b8065dbbee98513ed79e56",
   "parameters": "bundled Turner2004; default completed-WMB weak closure",
   "scope": "full 388-nt RNA, beam=200, outer ranking, pilot exponent=2/3, local caps=200",
@@ -21,5 +21,6 @@
     "--max-case3-depth",
     "200"
   ],
-  "stdout": "loop_profile.txt"
+  "stdout": "loop_profile.txt",
+  "stdout_normalization": "one terminal newline for the single record"
 }

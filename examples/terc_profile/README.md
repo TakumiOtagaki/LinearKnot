@@ -36,6 +36,7 @@ python3 examples/terc_profile/plot.py --data-dir build/examples/terc_profile/out
 For a native build, add `--bin-dir build` to the first command. The runner
 records the command, input/output hashes and executable hash in `run.json`.
 It runs outside the source directory with the bundled parameters.
+The saved text omits the CLI's trailing blank record separator.
 Last-digit numerical differences may occur across builds.
 
 The equivalent folding command is:
