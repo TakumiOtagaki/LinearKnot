@@ -616,7 +616,10 @@ This correction changes the conditional ensemble, not just its evaluator.
 Legacy parity is scoped to `LegacyCompatible`; see the
 [model scope](../../../documents/model.md) and
 [validation guide](../../../documents/validation.md).
-No general unambiguity or full SI weight-equivalence theorem is claimed.
+The [model-level derivation correspondence](../../../documents/model.md#derivation-correspondence)
+uses completed-region weak closure and matching boundary/energy conventions;
+it does not apply to `LegacyCompatible`. Finite implementation checks and the
+target-constrained evaluator's completeness are separate validation questions.
 
 The official oracle pins upstream CParty plus the ordered local patches in
 [config.json](../../../test/oracle/legacy_cparty/config.json), without

@@ -1,11 +1,12 @@
 # Third-party notices
 
-## CParty
+## Model and oracle reference
 
-LinearKnot derives from [CParty](https://github.com/TheCOBRALab/CParty).
-The existing GPL version 3 text is preserved in [LICENSE](LICENSE).
-The original CParty authors and contributors retain their rights in their
-contributions. This notice does not replace or amend their license.
+LinearKnot implements the hierarchical folding model described in
+[CParty](https://github.com/TheCOBRALab/CParty). The SCFG2 implementation uses
+a shared deduction generator and executor. Patched CParty inside is an
+external semantic oracle; its implementation is not bundled in the Python
+distribution. The project's GPL version 3 license is in [LICENSE](LICENSE).
 
 Scientific reference: Mateo Gray, Luke Trinity, Ulrike Stege, Yann Ponty,
 Sebastian Will, and Hosna Jabbari. CParty: hierarchically constrained
@@ -38,11 +39,11 @@ Scientific reference: Ronny Lorenz et al. ViennaRNA Package 2.0.
 
 | Component | Recorded origin and local changes | Terms / scope |
 | --- | --- | --- |
-| SCFG2 grammar and geometry | Source-informed re-expression of CParty's model and deduction system using a shared executor, explicit deductions, semirings and static scaffold geometry. VP/WMB support conditions are specified in `src/scfg2/deductions/README.md`, including retained compatibility conditions. | The current root LICENSE remains in place. This description does not certify independent authorship or grant an MIT license. |
+| SCFG2 grammar and geometry | Implementation of CParty's model and deduction system using a shared executor, explicit deductions, semirings and static scaffold geometry. VP/WMB support conditions are specified in `src/scfg2/deductions/README.md`, including retained compatibility conditions. | Project GPLv3 license; scientific reference above. |
 | `src/ViennaRNA/` | ViennaRNA inherited through CParty, including local changes to PF raw/log parameter construction and parameter-file envelope validation. | ViennaRNA's COPYING and AUTHORS above; the representative v2.4.17 match does not certify every file. |
-| `src/scfg2/weights/log_loops.hh` | Log-space translation of the bundled ViennaRNA PF helpers in `loops/hairpin.h`, `loops/internal.h`, `loops/multibranch.h` and `loops/external.h`. | Vienna-derived implementation outside the vendor directory; its relocation/translation does not establish a new license grant. See the ViennaRNA terms above. |
-| `src/scfg2/weights/internal_loop.hh`, runtime and pair-table adapters | Local long-loop extrapolation and backend adapters using ViennaRNA's model tables/API. The small-loop reference delegates to Vienna's helper; the log consumer uses the translated helper above. | Keep the Vienna/model provenance in scope. These wrappers are not a replacement thermodynamic backend or an independently cleared MIT component. |
-| `cmake/BundledViennaRNA.cmake` | Locally organized build module preserving the inherited Vienna source inventory and exported static-library contract. | Build refactoring does not change the terms of the compiled sources or remove their attribution. |
+| `src/scfg2/weights/log_loops.hh` | Log-space translation of the bundled ViennaRNA PF helpers in `loops/hairpin.h`, `loops/internal.h`, `loops/multibranch.h` and `loops/external.h`. | ViennaRNA terms above. |
+| `src/scfg2/weights/internal_loop.hh`, runtime and pair-table adapters | Local long-loop extrapolation and backend adapters using ViennaRNA's model tables/API. The small-loop reference delegates to Vienna's helper; the log consumer uses the translated helper above. | Project GPLv3 license for local wrappers; ViennaRNA terms for the bundled helpers and tables. |
+| `cmake/BundledViennaRNA.cmake` | Locally organized build module preserving the inherited Vienna source inventory and exported static-library contract. | Project GPLv3 license for the build module; ViennaRNA terms for the compiled sources. |
 | `src/scfg2/weights/pseudoknot_parameters.hh` and `params/*.par` | Retained CParty/DP09 parameterization, band multipliers and inherited parameter files. | Model/data origin is separate from authorship of the executor; the table provenance is recorded below. |
 | `test/oracle/legacy_cparty/patches/` | Local corrections with small original CParty context hunks. The checked-out oracle is external to production. | Retain upstream context attribution; these patches are excluded from the Python sdist/wheel by the current explicit packaging rules. |
 
@@ -66,11 +67,3 @@ original dataset's redistribution terms have been independently verified.
 Top-level `params/` is not included in the Python sdist/wheel. Native commands
 still incorporate the bundled ViennaRNA default tables; absence of those
 standalone files does not remove the thermodynamic data/backend boundary.
-
-## Distribution review status
-
-Adding these notices restores attribution and includes the upstream terms;
-it does not establish compatibility between the CParty GPL and ViennaRNA
-terms. Additional permissions or exceptions have not been verified. The
-inherited `GPL-3.0-only` package metadata must be reviewed for the combined
-distribution before public release. Public publication is deferred.

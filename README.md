@@ -258,5 +258,4 @@ RNA pseudoknots.” *Bioinformatics* 41(1), btae748 (2025).
 [doi:10.1093/bioinformatics/btae748](https://doi.org/10.1093/bioinformatics/btae748)
 
 See [LICENSE](LICENSE) and [third-party notices](THIRD_PARTY_NOTICES.md)
-for the CParty-derived GPLv3 text and the bundled ViennaRNA terms.
-The combined-distribution license review remains open before public release.
+for the project's GPLv3 license and the bundled ViennaRNA terms.

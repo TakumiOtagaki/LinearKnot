@@ -41,6 +41,33 @@ windows for newly generated internal loops remain part of the model.
 See the [weight-layer contracts](../src/scfg2/weights/README.md) and
 [third-party notices](../THIRD_PARTY_NOTICES.md) for parameter provenance.
 
+## Derivation correspondence
+
+The adopted density-2 model uses the completed-region weak-closure condition
+from CParty's mathematical decomposition. Under the same boundary and energy
+conventions, the shared grammar regroups that decomposition's child products
+in a fixed order. Intermediate states retain the original split coordinates
+and scaffold anchors; contracting those states recovers the original rule.
+Conversely, the fixed order gives one expansion of each original derivation.
+Each local energy term occurs once, preserving total energy and Boltzmann
+weight before pruning.
+
+The correspondence covers these intermediate combinations:
+
+| Combination | Preserved information and completion condition |
+| --- | --- |
+| VP three-gap product | Combine the last two WI gaps, then the first; retain the original split tuple and all three factors. |
+| BE wings | Combine the inner BE and right WIP, then the left WIP and local factor; retain both scaffold-pair anchors. |
+| WMBP band join and WMB completion | Retain the shared BE anchors and parent-boundary condition; require weak closure when the WMB chain completes. Partial WMBP/WMBW chains may remain open. |
+| Empty WI gap | Restore the omitted gap as a unit factor, without an extra split choice or unpaired assignment. Empty WIP remains invalid. |
+
+Together with CParty's decomposition theorem, this is the model-level
+correspondence used in the paper. It excludes `LegacyCompatible`, which omits
+completed-WMB weak closure and can admit duplicate derivations. Beam pruning
+restricts the retained support. The [implemented boundary contracts](../src/scfg2/deductions/README.md)
+and [finite validation witnesses](validation.md) are separate evidence about
+the program; enumeration alone is not a proof for arbitrary inputs.
+
 ## Beam and exact computation
 
 The default beam width is 100 with outer ranking. An inside pilot of width
@@ -96,17 +123,19 @@ is returned as unreachable. This uses the same local weights as inside.
 `ExactSession::probability()` divides that selected derivation's weight by
 the inside partition function. If multiple derivations emit the same pair
 map, this numerator is their maximum weight, rather than their summed mass.
-The energy is therefore a best-derivation energy, and the reported probability
-is not automatically the summed probability of the pair map. Corrected WMB
-closure and the finite regression witnesses do not supply a general
-unambiguity proof.
+The API therefore computes a best-derivation energy. Under the adopted
+model's one-to-one correspondence, a reachable target has a single derivation
+and the numerator is its structure weight. This interpretation does not
+extend to `LegacyCompatible`: the constrained output-grouping witness includes
+a compatibility-mode target with two derivations. The API does not sum those
+derivations.
 
 Successful reachable evaluation is sound for the requested pair map. The
 local constraint predicates and final check have regression coverage, but
 no general target-completeness proof: an unreachable result is not a
-certificate that no grammar derivation exists. Scaffold-split invariance
-and full equivalence to every published pseudoknot weight formula are also
-not established. See the [constrained output-grouping witness](../test/scfg2_constrained_small_n_grouping_test.cc)
+certificate that no grammar derivation exists. The model-level correspondence
+does not assert scaffold-split invariance or cover different boundary and
+energy conventions. See the [constrained output-grouping witness](../test/scfg2_constrained_small_n_grouping_test.cc)
 and [validation guide](validation.md).
 
 For API result fields, error contracts, and streaming callbacks, see the

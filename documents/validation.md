@@ -47,6 +47,11 @@ as a distinct measurement. A stage duration is not an end-to-end process
 time. Check numerical agreement and record compiler flags and binary hashes
 when changing a timing driver.
 
+Record beam width, ranking, pilot exponent and both geometry limits. The CLI
+geometry defaults remain 30 independently of beam width. To reproduce the
+paper's finite-beam policy `h=d=max(b,30)`, supply both limits explicitly;
+for example, use `--beam 100 --max-hairpin 100 --max-case3-depth 100`.
+
 ## Focused regression witnesses
 
 - [Private column storage](../test/scfg2_column_store_test.cc) compares
@@ -129,8 +134,13 @@ when changing a timing driver.
   required. Current energy goldens are in the
   [inside-oracle test](../test/scfg2_exact_inside_oracle_test.cc).
 
-These are finite witnesses for the documented contracts, not general proofs
-of unambiguity, constraint completeness or full published-model equivalence.
+These are finite implementation witnesses for the documented contracts.
+The [model-level derivation correspondence](model.md#derivation-correspondence)
+uses the adopted completed-region weak-closure condition and the same boundary
+and energy conventions as CParty's mathematical decomposition. The finite
+checks do not prove arbitrary-input program correctness or completeness of
+the target-constrained evaluator. Compatibility-mode oracle agreement is a
+separate contract and does not establish unambiguity for that mode.
 
 ## Package and installed-command checks
 
@@ -144,6 +154,14 @@ Use [Python installation](../python/README.md) and
 [Conda instructions](../conda_recipe/README.md) for local packaging.
 `python/smoke_test.py` exercises all seven installed subcommands outside the
 source checkout. Publication remains separate from building artifacts.
+
+The local Linux x86_64 package check on 2026-10-22 passed source payload and
+version checks, wheel payload/notices checks, and strict Twine metadata
+validation. The wheel was compiled from the checked sdist in manylinux_2_28
+and repaired to `manylinux_2_24_x86_64.manylinux_2_28_x86_64`. All 17 installed
+CLI probes passed in fresh Python 3.9 and 3.12 host environments and a fresh
+Python 3.9 environment inside the container. This run did not execute macOS
+or arm64 builds.
 
 ## Reproducible examples
 
