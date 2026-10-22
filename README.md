@@ -124,10 +124,12 @@ are one-based.
 ## Loop profiles
 
 `profile` describes the structural environment of each base across the
-ensemble:
+ensemble. This example uses rat telomerase RNA (Terc, 388 nt), with 61 fixed
+scaffold pairs:
 
 ```bash
-linearknot profile -i examples/hairpin_exterior/input.txt > loop_profile.txt
+linearknot profile -i examples/terc_profile/input.txt \
+  --beam 200 --max-hairpin 200 --max-case3-depth 200 > loop_profile.txt
 ```
 
 The output has seven labeled rows: Stem, Hairpin, Bulge, Internal,
@@ -136,10 +138,14 @@ position. The seven probabilities sum to one at each base. PseudoLoop
 captures unpaired positions in pseudoknot loops; Stem includes both
 scaffold pairs and added pairs.
 
-![Per-base loop and stem probabilities](examples/hairpin_exterior/figures/loop_profile.png)
+![Structural contexts across rat Terc, with a zoom into the pseudoknot region](examples/terc_profile/figures/loop_profile.png)
 
-See the [saved loop profile](examples/hairpin_exterior/output/loop_profile.txt)
-and [plotting instructions](examples/README.md#reproduce-the-gallery).
+The upper panel shows the full RNA; the lower panel enlarges positions
+40–160 from the same calculation. PseudoLoop probability reaches about
+84% at base 123 in this region.
+
+See the [saved loop profile](examples/terc_profile/output/loop_profile.txt)
+and [input provenance and reproduction steps](examples/terc_profile/README.md).
 
 ## Window accessibility
 

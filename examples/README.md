@@ -14,8 +14,10 @@ GGGGGAACCAACCC
 Both beam and exact prediction produce `(([[[..))..]]]`. The added pairs
 `(3,14)`, `(4,13)`, and `(5,12)` connect the scaffold hairpin to the exterior
 and cross the fixed scaffold pairs `(1,9)` and `(2,8)`. Positions here are
-one-based. All gallery outputs use beam 100, outer ranking, pilot exponent
-2/3, local caps 30, and the bundled Turner2004 parameters.
+one-based. The synthetic example uses beam 100, outer ranking, pilot exponent
+2/3, local caps 30, and the bundled Turner2004 parameters. The
+[rat Terc profile](terc_profile/README.md) below uses a longer biological
+sequence and beam/local caps 200.
 
 ## Prediction and base-pair probabilities
 
@@ -36,19 +38,27 @@ linearknot fold -i examples/hairpin_exterior/input.txt --beam 100 --bpp bpp.tsv
 
 ## Structural contexts: linearknot profile
 
+The README's profile figure uses rat telomerase RNA (388 nt). Its full-length
+overview and enlarged pseudoknot region show all seven structural contexts.
+
 ```bash
-linearknot profile -i examples/hairpin_exterior/input.txt --beam 100
+linearknot profile -i examples/terc_profile/input.txt \
+  --beam 200 --max-hairpin 200 --max-case3-depth 200
 ```
 
-[Output](hairpin_exterior/output/loop_profile.txt) ·
-[Vector figure](hairpin_exterior/figures/loop_profile.svg)
+[Output](terc_profile/output/loop_profile.txt) ·
+[Vector figure](terc_profile/figures/loop_profile.svg) ·
+[Input and reproduction](terc_profile/README.md)
 
 Each labeled row contains one probability per base. The seven contexts are
 Stem, Hairpin, Bulge, Internal, Multiloop, Exterior, and PseudoLoop. Their
 probabilities sum to one at each base. The extra PseudoLoop context makes
 the pseudoknot contribution visible in this example.
 
-![Per-base structural context probabilities](hairpin_exterior/figures/loop_profile.png)
+![Full-length and enlarged structural context probabilities for rat Terc](terc_profile/figures/loop_profile.png)
+
+The [14-nt synthetic profile](hairpin_exterior/output/loop_profile.txt) remains
+available alongside the other outputs from the small example.
 
 ## Window accessibility: linearknot access
 
@@ -152,7 +162,9 @@ in this example with gamma 1.
 
 ## Reproduce the gallery
 
-From the repository root, with the CLI programs installed on PATH:
+To regenerate the synthetic hairpin/exterior example, run from the repository
+root with the CLI program installed on PATH. The longer
+[Terc profile has separate reproduction steps](terc_profile/README.md#reproduce).
 
 ```bash
 python3 examples/run.py
