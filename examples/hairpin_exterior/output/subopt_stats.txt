@@ -1,1 +1,1 @@
-record=hairpin_exterior scope=inside_retained_beam ranking=outer outer_pilot_exponent=2/3 beam=100 mfe=-5.0310000000000006 returned=8 stop=top_k log_z=8.1977916087235094 states=171 terms=218 factors=245 candidates=42 cached=68 seconds=0.002000206
+record=hairpin_exterior scope=inside_retained_beam ranking=outer outer_pilot_exponent=2/3 beam=100 mfe=-5.0310000000000006 returned=8 stop=top_k log_z=8.1977916087235094 states=171 terms=218 factors=245 candidates=42 cached=68 seconds=0.0021272740000000002

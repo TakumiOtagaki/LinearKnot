@@ -1,10 +1,10 @@
 {
-  "repository_version": "0.1.1",
+  "repository_version": "0.2.0",
   "input_sha256": "7b2ba5695e19906ae3eac7e27aa2aa0d749bce03309a318ecbe87ff702335b7b",
   "parameters": "bundled Turner2004 (external parameter-file override removed)",
   "scope": "beam=100, outer ranking, pilot exponent=2/3, local caps=30",
   "binary_sha256": {
-    "linearknot": "14b7d576e0e1d873607ea36dc3573e71ef7b8542fb34990cb7e26fd94ef84ead"
+    "linearknot": "ff99f965c8f255586eb4e7aa2e667f437435c2f250eef6bbe53170a010f59b6a"
   },
   "commands": [
     {
@@ -224,5 +224,6 @@
       ],
       "stdout": "centroid.txt"
     }
-  ]
+  ],
+  "stdout_normalization": "one terminal newline for the single record"
 }

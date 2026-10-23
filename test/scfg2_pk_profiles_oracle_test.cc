@@ -51,6 +51,7 @@ char context_code(LoopContext context) {
 
 struct Summary {
   std::vector<cparty::scfg2::engine::TracebackPair> pairs;
+  std::vector<int> emitter;  // observation only; one generating rule per base
   std::string emitted;  // one-based; kNone when not emitted
   double weight = 0.0;
 };
@@ -89,17 +90,17 @@ bool fail(const std::string &label, const std::string &message) {
   return false;
 }
 
-bool check_case(const std::string &label,
-                std::string sequence,
-                std::string scaffold) {
+bool check_case_policy(const std::string &label,
+                       std::string sequence, std::string scaffold,
+                       cparty::scfg2::WmbClosurePolicy policy) {
   using namespace cparty::scfg2;
   const cand_pos_t n = static_cast<cand_pos_t>(sequence.size());
   const std::vector<cand_pos_t> windows = {1, 2, 3, 5, n, n + 3, 2};
 
   const auto profile = profiles::exact_profiles(sequence, scaffold, windows,
-      WmbClosurePolicy::RequireWeakClosure, true);
+      policy, true);
   if (!profile.ok) return fail(label, "exact_profiles: " + profile.error);
-  const auto total_only = profiles::exact_profiles(sequence, scaffold, windows);
+  const auto total_only = profiles::exact_profiles(sequence, scaffold, windows, policy);
   if (!total_only.ok || !total_only.accessibility_by_loop.empty() ||
       total_only.accessibility != profile.accessibility ||
       total_only.context != profile.context)
@@ -107,7 +108,7 @@ bool check_case(const std::string &label,
 
   cparty::scfg2::weights::RuntimeSnapshot owner(
       sequence, scaffold);
-  replay::WFinalExactInsideContext ctx(owner);
+  replay::WFinalExactInsideContext ctx(owner, policy);
   storage::exact_store::reset();
   const auto is_unpaired = [&](cand_pos_t pos) { return ctx.is_unpaired(pos); };
   const auto schedule = engine::build_pkfree_basic_exact_schedule(n, ctx);
@@ -125,12 +126,14 @@ bool check_case(const std::string &label,
       Summary initial;
       initial.weight = local;
       initial.emitted.assign(static_cast<std::size_t>(n) + 1, kNone);
+      initial.emitter.assign(static_cast<std::size_t>(n) + 1, -1);
       engine::append_deduction_generated_pairs(deduction, ctx, &initial.pairs);
       const auto emission = profiles::unpaired_emission(deduction, is_unpaired);
       for (std::size_t r = 0; r < emission.count; ++r) {
         const auto &run = emission.runs[r];
         for (cand_pos_t pos = run.lo; pos <= run.hi; ++pos) {
           initial.emitted[static_cast<std::size_t>(pos)] = context_code(run.context);
+          initial.emitter[pos] = static_cast<int>(deduction.rule);
         }
       }
       SummaryMap partial;
@@ -152,6 +155,7 @@ bool check_case(const std::string &label,
                 return false;
               }
               combined.emitted[pos] = child.emitted[pos];
+              combined.emitter[pos] = child.emitter[pos];
             }
             for (const auto &pair : child.pairs) {
               engine::append_unique_traceback_pair(&combined.pairs, pair);
@@ -188,6 +192,19 @@ bool check_case(const std::string &label,
   std::vector<std::vector<LoopRow>> loop_access(windows.size(),
                                                std::vector<LoopRow>(n + 1));
   for (const auto &[_, summary] : derivations) {
+    if (std::getenv("SCFG2_PROFILE_GEOMETRY_RECORDS")) {
+      std::cout << "RECORD\t" << label << '\t' << static_cast<int>(policy)
+                << '\t' << sequence << '\t' << scaffold << '\t'
+                << summary.emitted.substr(1) << '\t';
+      for (const auto &pair : summary.pairs) std::cout << pair.i << '-' << pair.j << ',';
+      std::cout << '\t';
+      for (cand_pos_t pos = 1; pos <= n; ++pos) {
+        if (summary.emitter[pos] >= 0)
+          std::cout << grammar::rule_name(static_cast<grammar::RuleId>(summary.emitter[pos]));
+        std::cout << ',';
+      }
+      std::cout << '\n';
+    }
     const double p = summary.weight / z;
     std::vector<bool> paired(static_cast<std::size_t>(n) + 1, false);
     for (cand_pos_t pos = 1; pos <= n; ++pos) {
@@ -280,6 +297,12 @@ bool check_case(const std::string &label,
   return true;
 }
 
+bool check_case(const std::string &label, std::string sequence, std::string scaffold) {
+  using cparty::scfg2::WmbClosurePolicy;
+  bool ok = check_case_policy(label, sequence, scaffold, WmbClosurePolicy::RequireWeakClosure);
+  return check_case_policy(label, sequence, scaffold, WmbClosurePolicy::LegacyCompatible) && ok;
+}
+
 std::string random_scaffold(std::mt19937 &rng, std::string &sequence) {
   const int n = static_cast<int>(sequence.size());
   std::string g(n, '.');
@@ -328,6 +351,9 @@ std::string random_scaffold(std::mt19937 &rng, std::string &sequence) {
 
 int main(int argc, char **argv) {
   setenv("CPARTY_FIXED_ENERGY_PARAM_FILE", "params/rna_Turner04.par", 1);
+  const bool geometry = argc > 1 && std::string(argv[1]) == "--geometry-records";
+  if (geometry)
+    setenv("SCFG2_PROFILE_GEOMETRY_RECORDS", "1", 1);
   bool ok = true;
   ok &= check_case("wmb-witness", "GCGCGCGCGCGCGC", "(.(......)...)");
   ok &= check_case("two-hairpins", "GGGAAACCCAGGGAAACCC", "(((...))).........."
@@ -346,7 +372,12 @@ int main(int argc, char **argv) {
   ok &= check_case("wip-minimal-hairpin-dp09", "GAGAAACAAGAAGAAAAAAAAACCAAAAC",
                    "(.(...)..(............)).....");
   setenv("CPARTY_FIXED_ENERGY_PARAM_FILE", "params/rna_Turner04.par", 1);
-  const int count = argc > 1 ? std::atoi(argv[1]) : 12;
+  if (geometry) {
+    std::string label, sequence, scaffold;
+    while (std::cin >> label >> sequence >> scaffold)
+      ok &= check_case(label, sequence, scaffold);
+  }
+  const int count = argc > 1 && !geometry ? std::atoi(argv[1]) : 12;
   std::mt19937 rng(20261007);
   std::uniform_int_distribution<int> base(0, 3);
   const int max_length = argc > 2 ? std::atoi(argv[2]) : 16;

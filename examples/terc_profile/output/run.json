@@ -1,8 +1,8 @@
 {
-  "repository_version": "0.1.1",
+  "repository_version": "0.2.0",
   "input_sha256": "897919ac1bed916f670363299b4002971fb8479146127b75b0dae6508b21ce1b",
-  "output_sha256": "e3f7eca1db39e230f297eb01ec788b4a4ab872d40b8f5a6f51d0def2a8bd034f",
-  "binary_sha256": "0d7d5dc82da37e177d216d82538f7649ad19191126b8065dbbee98513ed79e56",
+  "output_sha256": "bfc44d7f5eb888034dea05bfbbceb119f64de19a5e4469964d315253071fc7d1",
+  "binary_sha256": "ff99f965c8f255586eb4e7aa2e667f437435c2f250eef6bbe53170a010f59b6a",
   "parameters": "bundled Turner2004; default completed-WMB weak closure",
   "scope": "full 388-nt RNA, beam=200, outer ranking, pilot exponent=2/3, local caps=200",
   "command": [

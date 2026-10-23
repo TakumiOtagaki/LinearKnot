@@ -9,7 +9,8 @@ the seven CLI commands, and example figures.
 | Native CLI installation with pip or uv | [Python installation](../python/README.md) |
 | Exact and beam C++ interfaces | [C++ API](../src/scfg2/api/README.md) |
 | Scaffold, model, and decoding objectives | [Model](model.md) |
-| Proposed PseudoLoop definition and preflight checks (production unchanged) | [Context proposal](pseudoloop_context_change.md) |
+| Version changes | [Release notes](release_notes.md) |
+| PseudoLoop definition change in 0.2.0 and validation | [Loop contexts](pseudoloop_context_change.md) |
 | Time, space, and output-dependent costs | [Complexity](complexity.md) |
 | Building, tests, and the external oracle | [Validation](validation.md) |
 | Shared grammar and execution layers | [Developer overview](../src/scfg2/README.md) |

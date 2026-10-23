@@ -38,14 +38,9 @@ inline bool beam_aggregated_run_rule(grammar::RuleId rule) {
 }
 
 inline LoopContext aggregated_run_context(grammar::RuleId rule) {
-  switch (rule) {
-    case grammar::RuleId::WM_START_V:
-    case grammar::RuleId::WM_START_WMB:
-    case grammar::RuleId::VM_SPLIT_WMp_BASE:
-      return LoopContext::Multi;
-    default:
-      return LoopContext::PseudoLoop;
-  }
+  if (!beam_aggregated_run_rule(rule))
+    throw std::logic_error("rule has no aggregated unpaired run");
+  return fixed_rule_context(rule);
 }
 
 // Chain family id for the VPR right-run prefix, distinct from nonterminals.
@@ -194,7 +189,7 @@ ProfileResult beam_profiles_with_graph(const std::string &sequence,
   const double log_cp1 = ctx.vpr_split_vp_basepair_weight(1);
   for (const auto &cell : recorder.vpr_cells) {
     auto &step = acc.chain_step(detail::kVprRunChainFamily, cell.i, cell.t,
-                                LoopContext::PseudoLoop);
+                                fixed_rule_context(grammar::RuleId::VPR_SPLIT_VP_BASEPAIR));
     const double state_adjoint = adjoint(cell.total.node);
     step.log_entry = cell.total.log_value;
     step.log_step = log_cp1;
@@ -302,7 +297,8 @@ inline ProfileResult beam_profiles(const std::string &sequence,
     for (const auto &[i, cell] : program.vpr_cells(j)) {
       const auto found = reverse.vpr_beta[j].find(i);
       if (found == reverse.vpr_beta[j].end()) continue;
-      auto &step = acc.chain_step(detail::kVprRunChainFamily, i, j, LoopContext::PseudoLoop);
+      auto &step = acc.chain_step(detail::kVprRunChainFamily, i, j,
+                                  fixed_rule_context(grammar::RuleId::VPR_SPLIT_VP_BASEPAIR));
       step.log_entry = cell.alpha;
       step.log_step = log_cp;
       step.has_prev = cell.carried;

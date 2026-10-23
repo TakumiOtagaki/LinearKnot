@@ -90,8 +90,13 @@ scaffold pairs with probability one. For each base, the unpaired probability
 is q(i) = 1 - sum_j p(i,j).
 
 Loop profiles partition each base into Stem, Hairpin, Bulge, Internal,
-Multiloop, Exterior and PseudoLoop. Window accessibility is the joint
-probability that the entire requested window is unpaired. The optional
+Multiloop, Exterior and PseudoLoop. Since 0.2.0, PseudoLoop labels unpaired
+gaps between crossing bands (direct WI emissions). Multiloop also includes
+the wings of multiloops closed by pairs of one band, independently of the
+energy parameters used there. Labels apply to directly emitted bases;
+a nested child keeps its own context. See the
+[geometric definition](pseudoloop_context_change.md). Window accessibility is
+the joint probability that the entire requested window is unpaired. The optional
 loop channels partition that window probability by context. Opening energy
 is -RT log P; a zero probability has infinite opening energy.
 

@@ -1,5 +1,5 @@
 {
-  "status": "proposed geometry reference; production labels unchanged",
+  "status": "geometry reference for loop contexts since 0.2.0",
   "coordinates": "one-based",
   "context_codes": "S:Stem,H:Hairpin,B:Bulge,I:Internal,M:Multi,E:Exterior,P:PseudoLoop",
   "cases": [

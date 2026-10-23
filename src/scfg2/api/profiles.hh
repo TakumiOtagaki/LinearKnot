@@ -10,9 +10,9 @@
 
 namespace cparty::scfg2::api {
 
-// Structural contexts of one base in G u G'.  PseudoLoop holds unpaired bases
-// charged by the pseudoknot penalties (inside a pseudoloop or a multiloop
-// spanning a band); the other six follow CapR.
+// Structural contexts of one base in G u G'. PseudoLoop holds unpaired
+// bases directly in gaps between crossing bands. Multiloop wings within a
+// band are Multi, independently of their pseudoknot energy parameters.
 inline constexpr std::size_t structural_context_count = 7;
 inline constexpr std::array<const char *, structural_context_count>
     structural_context_names = {"Stem",  "Hairpin",  "Bulge",     "Internal",

@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstddef>
+#include <stdexcept>
 #include <string_view>
 
 namespace cparty::scfg2::profiles {
@@ -36,6 +37,38 @@ inline constexpr std::string_view loop_context_name(LoopContext context) {
     case LoopContext::PseudoLoop: return "PseudoLoop";
   }
   return "?";
+}
+
+// Context of rules whose directly emitted unpaired bases have a fixed label.
+// Shared by ordinary deductions and the beam's aggregated run observers.
+// Two-sided Bulge/Internal loops depend on geometry and are handled separately.
+inline LoopContext fixed_rule_context(grammar::RuleId rule) {
+  using grammar::RuleId;
+  switch (rule) {
+    case RuleId::V_HAIRPIN:
+      return LoopContext::Hairpin;
+    case RuleId::W_EXTEND_UNPAIRED:
+      return LoopContext::Exterior;
+    case RuleId::WI_BASE_SINGLE:
+    case RuleId::WI_EXTEND_UNPAIRED:
+      return LoopContext::PseudoLoop;
+    case RuleId::VM_SPLIT_WMp_BASE:
+    case RuleId::WM_START_V:
+    case RuleId::WM_START_WMB:
+    case RuleId::WM_EXTEND_UNPAIRED:
+    case RuleId::WMv_EXTEND_UNPAIRED:
+    case RuleId::WMp_EXTEND_UNPAIRED:
+    case RuleId::WIP_EXTEND_UNPAIRED:
+    case RuleId::WIP_BASEPAIR_V:
+    case RuleId::WIP_BASEPAIR_WMB:
+    case RuleId::VPL_SPLIT_VP:
+    case RuleId::VPR_SPLIT_VP_BASEPAIR:
+    case RuleId::BE_WIP_BASEPAIR:
+    case RuleId::BE_BASEPAIR_WIP:
+      return LoopContext::Multi;
+    default:
+      throw std::logic_error("rule has no fixed unpaired loop context");
+  }
 }
 
 // A run [lo, hi] of unpaired bases emitted by one deduction.
@@ -93,7 +126,7 @@ UnpairedEmission unpaired_emission(const deductions::Deduction &deduction,
   const auto &s = deduction.split;
   switch (deduction.rule) {
     case RuleId::V_HAIRPIN:
-      detail::add_run(out, i + 1, j - 1, LoopContext::Hairpin);
+      detail::add_run(out, i + 1, j - 1, fixed_rule_context(deduction.rule));
       break;
     case RuleId::V_INTERNAL:
     case RuleId::VP_INTERNAL_LOOP:
@@ -104,45 +137,45 @@ UnpairedEmission unpaired_emission(const deductions::Deduction &deduction,
     case RuleId::W_EXTEND_UNPAIRED:
       // W(i,i) is a zero-child chain start; it emits i only when i is free.
       if (deduction.child_count == 0 && !is_unpaired(j)) break;
-      detail::add_run(out, j, j, LoopContext::Exterior);
+      detail::add_run(out, j, j, fixed_rule_context(deduction.rule));
       out.chain_step = true;
       break;
 
     case RuleId::VM_SPLIT_WMp_BASE:
-      detail::add_run(out, i + 1, s.k - 1, LoopContext::Multi);
+      detail::add_run(out, i + 1, s.k - 1, fixed_rule_context(deduction.rule));
       break;
     case RuleId::WM_START_V:
     case RuleId::WM_START_WMB:
-      detail::add_run(out, i, s.k - 1, LoopContext::Multi);
+      detail::add_run(out, i, s.k - 1, fixed_rule_context(deduction.rule));
       break;
     case RuleId::WM_EXTEND_UNPAIRED:
     case RuleId::WMv_EXTEND_UNPAIRED:
     case RuleId::WMp_EXTEND_UNPAIRED:
-      detail::add_run(out, j, j, LoopContext::Multi);
+      detail::add_run(out, j, j, fixed_rule_context(deduction.rule));
       out.chain_step = true;
       break;
 
-    // Pseudoloop: bases charged by the pseudoknot penalties (PUP inside WI,
-    // c' in band-spanning multiloops and band borders).
+    // Only direct WI emissions are gaps between crossing bands. Band
+    // multiloop wings are Multi, independently of their energy parameters.
     case RuleId::WI_BASE_SINGLE:
     case RuleId::WI_EXTEND_UNPAIRED:
     case RuleId::WIP_EXTEND_UNPAIRED:
-      detail::add_run(out, j, j, LoopContext::PseudoLoop);
+      detail::add_run(out, j, j, fixed_rule_context(deduction.rule));
       out.chain_step = true;
       break;
     case RuleId::WIP_BASEPAIR_V:
     case RuleId::WIP_BASEPAIR_WMB:
     case RuleId::VPL_SPLIT_VP:
-      detail::add_run(out, i, s.k - 1, LoopContext::PseudoLoop);
+      detail::add_run(out, i, s.k - 1, fixed_rule_context(deduction.rule));
       break;
     case RuleId::VPR_SPLIT_VP_BASEPAIR:
-      detail::add_run(out, s.k + 1, j, LoopContext::PseudoLoop);
+      detail::add_run(out, s.k + 1, j, fixed_rule_context(deduction.rule));
       break;
     case RuleId::BE_WIP_BASEPAIR:
-      detail::add_run(out, s.l + 1, j - 1, LoopContext::PseudoLoop);
+      detail::add_run(out, s.l + 1, j - 1, fixed_rule_context(deduction.rule));
       break;
     case RuleId::BE_BASEPAIR_WIP:
-      detail::add_run(out, i + 1, s.k - 1, LoopContext::PseudoLoop);
+      detail::add_run(out, i + 1, s.k - 1, fixed_rule_context(deduction.rule));
       break;
 
     default:

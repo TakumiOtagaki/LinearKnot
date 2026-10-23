@@ -15,8 +15,10 @@ test/tools/run_required_scfg2_tests.sh
 The maintained runner builds with -j8 and checks grammar, weights, frozen
 exact-inside witnesses, retained/regenerated outside, profile normalization,
 sampling distributions, ranked decoding, exact/beam consistency, CLI behavior,
-installed C++ consumers and resource witnesses. Optional benchmark drivers are
-not a substitute for this acceptance suite.
+installed C++ consumers and resource witnesses. Completed derivation labels
+are also compared with a grammar-independent union-pair geometry classifier
+under both closure policies, including BE/VP wings and nested pseudoknots.
+Optional benchmark drivers are not a substitute for this acceptance suite.
 
 ## External semantic oracle
 

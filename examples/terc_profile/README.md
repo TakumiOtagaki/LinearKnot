@@ -16,7 +16,9 @@ The upper panel shows all 388 positions. The lower panel enlarges positions
 40–160, around the reference pseudoknot. Both panels use the same full-length
 calculation and retain coordinates in the full RNA. Each column partitions
 probability among Stem, Hairpin, Bulge, Internal, Multiloop, Exterior, and
-PseudoLoop. PseudoLoop reaches 0.839701 at base 123 within the enlarged region.
+PseudoLoop. With the 0.2.0 definition, PseudoLoop contains unpaired gaps
+between crossing bands, and Multiloop includes band multiloop wings.
+PseudoLoop reaches 0.839701 at base 123 within the enlarged region.
 
 These probabilities describe the model ensemble conditional on this scaffold.
 The calculation uses beam 200, outer ranking, pilot exponent 2/3, hairpin and
@@ -34,6 +36,7 @@ python3 examples/terc_profile/plot.py --data-dir build/examples/terc_profile/out
 ```
 
 For a native build, add `--bin-dir build` to the first command. The runner
+requires the executable version to match VERSION. The runner
 records the command, input/output hashes and executable hash in `run.json`.
 It runs outside the source directory with the bundled parameters.
 The saved text omits the CLI's trailing blank record separator.

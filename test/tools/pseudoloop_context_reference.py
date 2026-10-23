@@ -1,4 +1,4 @@
-"""Test reference for the proposed PseudoLoop definition, not production code.
+"""Independent test reference for the PseudoLoop definition introduced in 0.2.0.
 
 Uses only the completed union pair map: no rule IDs, scaffold provenance,
 energies or probabilities. Run this file to check the hand-specified fixtures.
@@ -169,7 +169,7 @@ def main():
             windows += len(run) * (len(run) + 1) // 2
     print(json.dumps({'geometry_fixtures': len(cases),
                       'fully_unpaired_windows': windows,
-                      'status': 'ok; proposed reference only, production unchanged'}))
+                      'status': 'ok; geometry reference'}))
 
 
 if __name__ == '__main__':

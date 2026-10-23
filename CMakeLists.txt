@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
 file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" LINEARKNOT_VERSION LIMIT_COUNT 1)
 project(LinearKnot VERSION ${LINEARKNOT_VERSION} LANGUAGES C CXX)
 
@@ -1060,6 +1061,11 @@ if(BUILD_TESTING)
   add_test(NAME scfg2_rules_core_exact_weight COMMAND scfg2_rules_core_exact_weight_test)
   add_test(NAME scfg2_fixed_rule_expansion COMMAND scfg2_fixed_rule_expansion_test)
   add_test(NAME scfg2_pk_profiles_oracle COMMAND scfg2_pk_profiles_oracle_test)
+  find_program(SCFG2_TEST_PYTHON python3)
+  if(SCFG2_TEST_PYTHON)
+    add_test(NAME scfg2_pseudoloop_geometry
+      COMMAND "${SCFG2_TEST_PYTHON}" -B "${CMAKE_CURRENT_SOURCE_DIR}/test/tools/test_pseudoloop_geometry.py" "${CMAKE_CURRENT_BINARY_DIR}")
+  endif()
   add_test(NAME scfg2_exact_regenerated_outside COMMAND scfg2_exact_regenerated_outside_test)
   set_tests_properties(scfg2_exact_regenerated_outside PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
   add_test(NAME scfg2_pk_profiles_beam COMMAND scfg2_pk_profiles_beam_test)

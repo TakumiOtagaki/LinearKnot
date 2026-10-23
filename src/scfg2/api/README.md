@@ -42,6 +42,9 @@ space without changing the existing profile time bound for r lengths.
 
 `linearknot access --by-loop` exposes the same values in an extra column,
 ordered `E,H,B,I,M,P` to follow LinearRaccess, with PseudoLoop added as `P`.
+Since 0.2.0, PseudoLoop means unpaired gaps between crossing bands;
+band multiloop wings belong to Multi. This applies to both per-base and
+window contexts. Weights and total accessibility are unchanged.
 The existing total column follows `--probability`; the extra column always
 contains joint probabilities. `--byloop` and `-byloop` are aliases.
 

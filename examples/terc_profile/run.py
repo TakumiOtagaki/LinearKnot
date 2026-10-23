@@ -22,6 +22,11 @@ def main():
     if not executable or not Path(executable).is_file():
         parser.error("install linearknot or provide --bin-dir build")
     executable = Path(executable).resolve()
+    version = (ROOT / "VERSION").read_text().strip()
+    reported = subprocess.run([str(executable), "--version"], capture_output=True,
+                              text=True, check=True).stdout.strip()
+    if reported != "LinearKnot " + version:
+        parser.error(f"expected LinearKnot {version}, found {reported}; rebuild the executable")
     output = args.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=True)
     arguments = ["profile", "-i", str(EXAMPLE / "input.txt"), "--beam", "200",
@@ -38,7 +43,7 @@ def main():
     display = ["linearknot", *arguments]
     display[display.index(str(EXAMPLE / "input.txt"))] = "examples/terc_profile/input.txt"
     manifest = {
-        "repository_version": (ROOT / "VERSION").read_text().strip(),
+        "repository_version": version,
         "input_sha256": hashlib.sha256((EXAMPLE / "input.txt").read_bytes()).hexdigest(),
         "output_sha256": hashlib.sha256((output / "loop_profile.txt").read_bytes()).hexdigest(),
         "binary_sha256": hashlib.sha256(executable.read_bytes()).hexdigest(),

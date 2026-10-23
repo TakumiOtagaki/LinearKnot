@@ -294,24 +294,56 @@ int main(int argc, char **argv) {
   std::uniform_int_distribution<int> base(0, 3);
   std::uniform_int_distribution<int> length(20, max_length);
   bool ok = check_chain_window_prefixes() && check_streamed_whole_runs();
-  // Compare numeric reverse with an independent arithmetic-tape reverse on
-  // finite retained beams, including both closure policies and rankings.
-  for (const auto policy : {WmbClosurePolicy::RequireWeakClosure,
-                            WmbClosurePolicy::LegacyCompatible}) {
-    for (const auto ranking : {beam::RankingMode::Baseline, beam::RankingMode::Outer}) {
-      const auto widths = replay::WFinalVpWmbpOnlineWidths::uniform(5);
-      const auto numeric = profiles::beam_profiles(
-          "GGGGGAACCAACCC", "((.....)).....", widths, windows, policy,
-          ranking, beam::PilotExponent::TwoThirds, true);
-      const auto taped = profiles::beam_profiles_taped(
-          "GGGGGAACCAACCC", "((.....)).....", widths, windows, policy,
-          ranking, beam::PilotExponent::TwoThirds, true);
-      if (!numeric.ok || !taped.ok)
-        ok = fail("by-loop-tape", numeric.error + " / " + taped.error) && ok;
-      else
-        ok = same("by-loop-tape", numeric, taped, 1e-9) && sane("by-loop-tape", numeric) && ok;
+  // Band-wing witnesses exercise WIP/VPL starts, VPR rightward prefixes,
+  // mirrored leftward prefixes and nested WI/WMB emissions. Compare independent
+  // reverse engines on each retained support; KeepAll also matches exact.
+  struct Fixture { const char *name; const char *sequence; const char *scaffold; };
+  const Fixture fixtures[] = {
+    {"gallery", "GGGGGAACCAACCC", "((.....))....."},
+    {"be-left-branch-right-run", "GAGAAACAAGAAGAAAAAAAAACAAACAAAAC", "(.(...)..(............)...)....."},
+    {"be-right-branch-left-run", "CAAAACAAACAAAAAAAAAGAAGAACAAAGAG", ".....(...(............)..(...).)"},
+    {"vp-left-branch-right-run", "GAGAAACAAGAAGAAAAAAAAACAAACAAAAC", "..(...).....(..................)"},
+    {"vp-right-branch-left-run", "CAAAACAAACAAAAAAAAAGAAGAACAAAGAG", "(..................).....(...).."},
+    {"be-wing-with-nested-wmb", "GAGGGGGAACCAACCCAAGAAGAAAAAAAAACAAACAAAAC", "(.((.....)).......(............)...)....."},
+    {"wi-gap-with-nested-wing", "GGGGGGAGAAACAAGAAGAAAAAAAAACAAACAAAACACCAACCC", "((...(.(...)..(............)...)......))....."}
+  };
+  for (const auto &fixture : fixtures) {
+    for (const auto policy : {WmbClosurePolicy::RequireWeakClosure,
+                              WmbClosurePolicy::LegacyCompatible}) {
+      const auto exact = profiles::exact_profiles(
+          fixture.sequence, fixture.scaffold, windows, policy, true);
+      if (!exact.ok) { ok = fail(fixture.name, exact.error) && ok; continue; }
+      for (const auto ranking : {beam::RankingMode::Baseline, beam::RankingMode::Outer}) {
+        for (const std::size_t b : {0, 2, 5, 20}) {
+          // Default low-level widths have no beam or geometry limits.
+          const auto widths = b ? replay::WFinalVpWmbpOnlineWidths::uniform(b)
+                                : replay::WFinalVpWmbpOnlineWidths{};
+          const auto numeric = profiles::beam_profiles(
+              fixture.sequence, fixture.scaffold, widths, windows, policy,
+              ranking, beam::PilotExponent::TwoThirds, true);
+          const auto taped = profiles::beam_profiles_taped(
+              fixture.sequence, fixture.scaffold, widths, windows, policy,
+              ranking, beam::PilotExponent::TwoThirds, true);
+          const auto label = std::string(fixture.name) + " b=" + std::to_string(b);
+          if (!numeric.ok || !taped.ok)
+            ok = fail(label, numeric.error + " / " + taped.error) && ok;
+          else {
+            ok = same(label, numeric, taped, 1e-9) && sane(label, numeric) && ok;
+            if (b == 0) ok = same(label + " exact", numeric, exact, 1e-9) && ok;
+          }
+        }
+      }
     }
   }
+  // A missing aggregate rule must not silently acquire a context.
+  try {
+    (void)profiles::detail::aggregated_run_context(grammar::RuleId::V_HAIRPIN);
+    ok = fail("aggregate-context", "accepted a non-aggregate rule") && ok;
+  } catch (const std::logic_error &) {}
+  try {
+    (void)profiles::fixed_rule_context(grammar::RuleId::V_INTERNAL);
+    ok = fail("fixed-context", "accepted a geometry-dependent rule") && ok;
+  } catch (const std::logic_error &) {}
   for (int c = 0; c < count; ++c) {
     std::string sequence(length(rng), 'A');
     for (auto &ch : sequence) ch = "ACGU"[base(rng)];

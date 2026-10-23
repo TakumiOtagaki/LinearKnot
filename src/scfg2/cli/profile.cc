@@ -4,7 +4,8 @@
 //
 // Input: records of an optional ">name" line, a sequence line and a scaffold
 // dot-bracket line.  Output follows CapR / LinearCapR: ">name", then one line
-// per context with n values.  PseudoLoop is the extra pseudoknot context.
+// per context with n values. PseudoLoop labels gaps between crossing bands;
+// multiloop wings within a band are Multiloop.
 
 #include "scfg2/api/profiles.hh"
 #include "scfg2/cli/cli_common.hh"

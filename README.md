@@ -135,8 +135,10 @@ linearknot profile -i examples/terc_profile/input.txt \
 The output has seven labeled rows: Stem, Hairpin, Bulge, Internal,
 Multiloop, Exterior, and PseudoLoop, with one probability per sequence
 position. The seven probabilities sum to one at each base. PseudoLoop
-captures unpaired positions in pseudoknot loops; Stem includes both
-scaffold pairs and added pairs.
+captures unpaired gaps between crossing bands. Multiloop includes the wings
+of multiloops within a band, even when scored with pseudoknot parameters
+([definition change in 0.2.0](documents/pseudoloop_context_change.md)).
+Stem includes both scaffold pairs and added pairs.
 
 ![Structural contexts across rat Terc, with a zoom into the pseudoknot region](examples/terc_profile/figures/loop_profile.png)
 

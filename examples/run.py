@@ -40,19 +40,24 @@ def main():
     ]
     environment = dict(os.environ)
     environment.pop("CPARTY_FIXED_ENERGY_PARAM_FILE", None)
+    executable = (args.bin_dir.resolve() / "linearknot") if args.bin_dir else shutil.which("linearknot")
+    if not executable or not Path(executable).is_file():
+        parser.error("cannot find linearknot; install it or provide --bin-dir build")
+    executable = Path(executable).resolve()
+    version = (ROOT / "VERSION").read_text().strip()
+    reported = subprocess.run([str(executable), "--version"], capture_output=True,
+                              text=True, check=True).stdout.strip()
+    if reported != "LinearKnot " + version:
+        parser.error(f"expected LinearKnot {version}, found {reported}; rebuild the executable")
     commands = []
     hashes = {}
     # Run from the output directory to avoid relying on checkout-relative assets.
     for name, extra, filename in jobs:
-        executable = (args.bin_dir.resolve() / "linearknot") if args.bin_dir else shutil.which("linearknot")
-        if not executable or not Path(executable).is_file():
-            parser.error("cannot find linearknot; install it or provide --bin-dir build")
-        executable = Path(executable).resolve()
         result = subprocess.run(
             [str(executable), name, *common, *extra], cwd=output, env=environment,
             text=True, capture_output=True, timeout=120, check=True,
         )
-        (output / filename).write_text(result.stdout)
+        (output / filename).write_text(result.stdout.rstrip("\n") + "\n")
         if name == "subopt":
             (output / "subopt_stats.txt").write_text(result.stderr)
         elif result.stderr:
@@ -65,12 +70,13 @@ def main():
             display[display.index("--bpp") + 1] = "bpp.tsv"
         commands.append({"argv": display, "stdout": filename})
     manifest = {
-        "repository_version": (ROOT / "VERSION").read_text().strip(),
+        "repository_version": version,
         "input_sha256": hashlib.sha256(INPUT.read_bytes()).hexdigest(),
         "parameters": "bundled Turner2004 (external parameter-file override removed)",
         "scope": "beam=100, outer ranking, pilot exponent=2/3, local caps=30",
         "binary_sha256": hashes,
         "commands": commands,
+        "stdout_normalization": "one terminal newline for the single record",
     }
     (output / "run.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print("example_outputs=" + str(output))

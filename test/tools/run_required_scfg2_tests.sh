@@ -126,6 +126,10 @@ echo "[scfg2-required] start linearknot_access_cli"
 python3 "$root_dir/test/tools/test_linearknot_access.py"
 echo "[scfg2-required] ok linearknot_access_cli"
 
+echo "[scfg2-required] start pseudoloop_geometry"
+python3 "$root_dir/test/tools/test_pseudoloop_geometry.py" "$build_dir"
+echo "[scfg2-required] ok pseudoloop_geometry"
+
 echo "[scfg2-required] start outer_ranking_cli"
 python3 "$root_dir/test/tools/test_outer_ranking_cli.py"
 echo "[scfg2-required] ok outer_ranking_cli"

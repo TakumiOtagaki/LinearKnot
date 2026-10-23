@@ -52,8 +52,9 @@ linearknot profile -i examples/terc_profile/input.txt \
 
 Each labeled row contains one probability per base. The seven contexts are
 Stem, Hairpin, Bulge, Internal, Multiloop, Exterior, and PseudoLoop. Their
-probabilities sum to one at each base. The extra PseudoLoop context makes
-the pseudoknot contribution visible in this example.
+probabilities sum to one at each base. PseudoLoop labels unpaired gaps
+between crossing bands; Multiloop includes band multiloop wings. The saved
+outputs use this 0.2.0 definition.
 
 ![Full-length and enlarged structural context probabilities for rat Terc](terc_profile/figures/loop_profile.png)
 
@@ -163,7 +164,9 @@ in this example with gamma 1.
 ## Reproduce the gallery
 
 To regenerate the synthetic hairpin/exterior example, run from the repository
-root with the CLI program installed on PATH. The longer
+root with the current CLI program installed on PATH. The runners check that
+the executable version matches VERSION. Saved text has one final newline
+for the single record, omitting the CLI blank separator. The longer
 [Terc profile has separate reproduction steps](terc_profile/README.md#reproduce).
 
 ```bash

@@ -1,13 +1,15 @@
-# Proposal: restrict PseudoLoop to gaps between crossing bands
+# PseudoLoop: gaps between crossing bands (0.2.0)
 
-Status: proposal with preflight specification and a test reference
-(2026-10-23). Production classification is unchanged. Written against
-v0.1.1 (`4f97fd3`) and documentation baseline `a8ace24`.
+Status: implemented in 0.2.0 (2026-10-23). The specification and preflight
+evidence below describe the change from v0.1.1 (`4f97fd3`), with documentation
+baseline `a8ace24`. The implementation uses one fixed-rule context map in
+`loop_context.hh` for both direct emissions and beam aggregates.
+Weights, grammar support and the seven output labels are preserved.
 
 ## Problem
 
-The loop profile assigns each unpaired base one of six contexts. The current
-rule is "PseudoLoop = unpaired bases charged by a pseudoknot penalty"
+The loop profile assigns each unpaired base one of six contexts. The v0.1.1
+rule was "PseudoLoop = unpaired bases charged by a pseudoknot penalty"
 (`src/scfg2/profiles/loop_context.hh`, comment above the PseudoLoop cases).
 That covers two different kinds of position:
 
@@ -22,7 +24,7 @@ That covers two different kinds of position:
 
 Type 2 is labelled PseudoLoop only because the energy model uses the
 pseudoknot multiloop parameters (`ap`, `bp`, `c_p`) there. Readers expect
-"PseudoLoop" to mean type 1, so the current label is misleading.
+"PseudoLoop" to mean type 1, so the old label was misleading.
 
 ```
  (   ..  (...)  ..  (   ...[[[...   )   ....  )   ...]]]
@@ -31,10 +33,10 @@ pseudoknot multiloop parameters (`ap`, `bp`, `c_p`) there. Readers expect
 
 `(i,j)` and `(k,l)` are two pairs of one scaffold band; `[[[ ]]]` crosses
 both. The bases marked `a` lie in a three-way multiloop closed by `(i,j)`,
-`(k,l)` and the branch. They are labelled PseudoLoop today. The bases in
+`(k,l)` and the branch. They were labelled PseudoLoop in v0.1.1. The bases in
 `...[[[` and `...]]]` that lie between the two bands are type 1.
 
-## Proposed definition
+## Definition since 0.2.0
 
 - **PseudoLoop**: unpaired bases in a gap between crossing bands, that is,
   bases directly emitted by WI rules. This does not include every unpaired
@@ -128,18 +130,13 @@ The six changing table rows contain **seven rule IDs**, because
 All three places must agree; the exact and finite-beam profiles are compared
 in validation.
 
-1. `src/scfg2/profiles/loop_context.hh`, `unpaired_emission()`: move the
-   seven rule IDs above from the PseudoLoop cases to `LoopContext::Multi`. Update
-   the comment ("bases charged by the pseudoknot penalties") to the new
-   definition.
-2. `src/scfg2/profiles/beam_profiles.hh`:
-   - `aggregated_run_context()` returns PseudoLoop by **default**. It
-     currently maps `WIP_BASEPAIR_V`, `WIP_BASEPAIR_WMB`, `VPL_SPLIT_VP` and
-     `VPR_SPLIT_VP_BASEPAIR` to PseudoLoop through that default. Return
-     Multi for them, and do not leave PseudoLoop as a catch-all.
-   - The VPR right-run chain uses `LoopContext::PseudoLoop` explicitly in
-     two places (`chain_step(detail::kVprRunChainFamily, ...)`, the
-     tape-based and the reverse-sweep paths). Change both to Multi.
+1. `src/scfg2/profiles/loop_context.hh`: `fixed_rule_context()` is the single
+   source for fixed labels. `unpaired_emission()` retains each rule's run
+   boundaries and chain behavior while obtaining its context from that map.
+2. `src/scfg2/profiles/beam_profiles.hh`: `aggregated_run_context()` checks
+   that the rule is a supported aggregate, then uses the shared mapping.
+   Both analytic and taped VPR right-run chains use the same map. Leftward
+   start-prefix chains retain their original geometry and ownership.
 3. Comments and descriptions: `src/scfg2/api/profiles.hh` (comment at the
    context names), `src/scfg2/cli/profile.cc` header comment,
    `documents/model.md` (Probabilities and structural contexts),
@@ -261,8 +258,35 @@ partition functions or unambiguity in compatibility mode.
 The 14 standalone geometry fixtures also passed, including 545 fully
 unpaired windows. These are finite preflight checks, not an arbitrary-input
 proof that every admitted production derivation matches the reference.
-Post-change numeric exact/beam/CLI regressions remain to be run when the
-production mapping is implemented.
+The maintained production regression is now:
+
+```bash
+python3 -B test/tools/test_pseudoloop_geometry.py build
+```
+
+It compares actual emitted labels under both closure policies with the
+independent reference, requires all seven changed rules to occur in completed
+derivations, and requires all six concrete target structures to be reached.
+The beam profile regression covers both closure policies and rankings at
+widths 2, 5 and 20, plus KeepAll without geometry caps, comparing the analytic
+and taped reverses and comparing KeepAll with exact.
+
+### Implementation comparison
+
+A frozen pre-change executable and numeric observer were compared with the
+new implementation on all six concrete inputs. The numeric comparison uses
+108 configurations: both closure policies, exact, and both beam rankings at
+widths 2, 5 and 20 plus unlimited KeepAll. Log partition weights and total
+window accessibility were bit-identical. Multi + PseudoLoop mass was
+preserved at every base and requested window; Multi only gained mass and
+PseudoLoop only lost it (absolute tolerance 1e-9). The other five per-base
+contexts differed by at most 2.22e-16 from floating-point regrouping.
+
+For the six inputs, exact and beam-5 CLI runs under both rankings gave
+162 unchanged comparisons covering MFE, fixed-seed samples and unique
+counts, subopt, MEA, centroid, BPP, total accessibility and opening energy.
+Output comparisons omit elapsed-time metadata. These finite checks
+complement the independent geometry test and the maintained acceptance suite.
 
 ## Expected effect on reported results
 
@@ -274,10 +298,13 @@ production mapping is implemented.
   cases have ordinary enclosing pairs with multiple child stems; they are
   not WI-gap instances. The sampled joint PseudoLoop contribution is
   848/1,000, not the conditional fraction 848/871.
-- These sample counts do not establish that the exact marginal or current
-  beam marginal at base 123 is unchanged. Recompute those values after the
-  production change, and retain or revise the README's approximate 84%
-  statement according to the resulting probabilities.
+- Recomputing the saved Terc beam-200 example with identical settings gives
+  PseudoLoop probability 0.8397007149209372 at base 123, compared with
+  0.8397009254807158 before the change. Multi increases from
+  0.001058880685586579 to 0.0010590912453651063. The README's approximate
+  84% statement still holds; the raw profile, manifest and figures have
+  been regenerated. These are beam marginals, distinct from the archived
+  exact-sample frequencies above.
 - Loop-context comparisons in the paper (Figure 1C context track, context
   TV in Figure 2B and Supplementary tables, by-loop validation table,
   Terc profiles) must be recomputed. The intended change preserves DP
@@ -286,7 +313,6 @@ production mapping is implemented.
 
 ## Version
 
-This changes the meaning of an output column. Release it as a new version
-(for example 0.2.0) and note the changed definition in the release notes.
-The preflight document, reference and fixtures alone do not change VERSION
-or activate the new classification.
+This changes the meaning of an output column. VERSION is 0.2.0; see
+[release notes](release_notes.md). The number, names and order of columns
+are unchanged. No new energy model or calculation mode is introduced.
