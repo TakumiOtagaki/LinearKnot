@@ -84,6 +84,37 @@ scaffold of the same length as the sequence, using balanced round brackets
 `()` and dots. Positions marked `.` may acquire additional pairs.
 The CLI uses the supplied scaffold; scaffold selection is a separate step.
 
+
+The source checkout includes a helper using the scaffold rule from the paper:
+LinearPartition-V with beam 200 and dangles 2, all pairs with probability
+at least 0.7, then only helices containing at least two stacked pairs. It
+selects directly from the BPP list, without an MEA step.
+
+```bash
+python3 -m pip install python-gflags  # dependency of the LinearPartition wrapper
+scripts/scaffold/build_linearpartition.sh
+python3 scripts/scaffold/make_scaffold.py sequences.fa --metadata scaffolds.json > scaffolds.txt
+linearknot fold -i scaffolds.txt
+```
+
+The helper writes a `#` comment recording the settings, LinearPartition
+commit when available, and executable hashes. `linearknot` ignores these
+comments. `--metadata` additionally saves per-record hashes in JSON.
+Use `--linearpartition PATH` for an existing wrapper; `--no-metadata-header`
+omits the comment for consumers requiring only three-line records.
+A scaffold may be all dots if no helix passes the filter.
+
+To reproduce the previous helper's MEA-filter rule, use `--from-mea`:
+
+```bash
+python3 scripts/scaffold/make_scaffold.py --from-mea --gamma 3 \
+  --threshold 0.5 --min-helix 1 --beam 100 sequences.fa > old_scaffolds.txt
+```
+
+These are scaffold-construction settings. The supplied G remains fixed during
+LinearKnot inference. The change is documented in the
+[scaffold specification](documents/scaffold_default_change.md).
+
 For file input, each record has an optional `>name` line, followed by one
 sequence line and one scaffold line:
 

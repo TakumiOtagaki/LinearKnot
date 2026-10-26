@@ -1,5 +1,19 @@
 # Release notes
 
+
+## 0.2.1
+
+The source-checkout scaffold helper now uses the paper's construction rule:
+all LinearPartition-V BPP pairs with probability at least 0.7, keeping helices
+of at least two stacked pairs, with beam 200 and dangles 2. It no longer
+starts from an MEA structure by default. `--from-mea` retains the previous
+mode and its defaults (gamma 3, threshold 0.5, minimum helix 1, beam 100).
+
+Output comments record the settings and LinearPartition provenance;
+`--metadata FILE` also writes a JSON sidecar. LinearKnot accepts the comments.
+The inference model and supplied-scaffold CLI behavior are unchanged. The
+paper's v0.2.0 computations already used this construction rule externally.
+
 ## 0.2.0
 
 PseudoLoop now labels unpaired gaps between crossing bands. Unpaired bases
