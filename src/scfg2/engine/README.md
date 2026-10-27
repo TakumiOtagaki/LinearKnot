@@ -27,3 +27,15 @@ without division; zero values and repeated child keys are supported. This helper
 does not recover old online pre-prune snapshots from a final pruned chart, and
 is used by the production beam's retained-state program in
 `beam/retained_outside.hh`.
+
+Complete-output probabilities use `GeneratedTargetIndex::matches_local_emissions`:
+generated pairs must belong to the requested output, and requested endpoints
+cannot be emitted unpaired. This reuses the shared pair and unpaired emission
+observers. Together with the complete derivation's per-base partition and an
+initial scaffold-compatibility check, it enforces the full union output.
+`exactly_partitions` retains its narrower interval-ownership contract for
+observations; it is not a general output-conditioning predicate. In particular,
+a VP interval can span an ordinary scaffold interior whose generated pairs are
+consumed by another branch. The 96-nt regression in the composed-beam test
+checks that target mass is finite and that denominator/maximum weights remain
+unchanged in both unlimited and finite beam runs.

@@ -793,11 +793,46 @@ void test_indexed_target_partition_matches_set_oracle() {
   }
 }
 
+void test_target_emissions_do_not_own_crossed_scaffold_interiors() {
+  using namespace cparty::scfg2;
+  FakeAllExactWeightContext ctx;
+  deductions::Deduction d;
+  d.parent = {NonTerminal::VP, 19, 67, -1, -1};
+  d.rule = RuleId::VP_WI_CASE2;
+  d.child_count = 2;
+  d.children[0].item = {NonTerminal::WI, 20, 35, -1, -1};
+  d.children[1].item = {NonTerminal::WI, 63, 66, -1, -1};
+  const std::vector<engine::TracebackPair> target{
+      {19, 67, engine::TracebackPairLane::Square},
+      {49, 53, engine::TracebackPairLane::Square}};
+  const engine::GeneratedTargetIndex index(target);
+  assert(index.compatible_with_scaffold(ctx, 96));
+  // The second target pair is emitted by the crossed scaffold's ordinary
+  // interior, not by VP or either of its WI children. A bounding interval
+  // overconstrains this otherwise valid local transition.
+  assert(!index.exactly_partitions(d, ctx));
+  assert(index.matches_local_emissions(d, ctx));
+  assert(engine::deduction_locally_matches_generated_target(d, ctx, target));
+  d.parent.i = 18;
+  assert(!index.matches_local_emissions(d, ctx));
+  d.parent = {NonTerminal::WI, 45, 49, -1, -1};
+  d.rule = RuleId::WI_EXTEND_UNPAIRED;
+  d.child_count = 1;
+  assert(!index.matches_local_emissions(d, ctx));
+  d.parent.j = 50;
+  assert(index.matches_local_emissions(d, ctx));
+  const engine::GeneratedTargetIndex invalid({
+      {2, 8, engine::TracebackPairLane::Square},
+      {2, 9, engine::TracebackPairLane::Square}});
+  assert(!invalid.compatible_with_scaffold(ctx, 96));
+}
+
 }  // namespace
 
 int main() {
   test_bulk_pair_uniqueness_preserves_order_and_lanes();
   test_indexed_target_partition_matches_set_oracle();
+  test_target_emissions_do_not_own_crossed_scaffold_interiors();
   test_chart_default_and_set();
   test_sumproduct_update();
   test_maxproduct_fold();

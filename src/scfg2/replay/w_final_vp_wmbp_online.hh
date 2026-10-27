@@ -1567,6 +1567,7 @@ run_w_final_vp_wmbp_online_targeted(
   using Semiring = semirings::TargetedCoupledLogSumMaxSemiring;
   const engine::GeneratedTargetIndex target_index(
       engine::generated_traceback_pairs(target_pairs, ctx));
+  const bool target_compatible = target_index.compatible_with_scaffold(ctx, n);
   return run_w_final_vp_wmbp_online_observed_transformed<Semiring>(
       ctx,
       n,
@@ -1578,7 +1579,8 @@ run_w_final_vp_wmbp_online_targeted(
          auto) {},
       [&](const deductions::Deduction &deduction,
           Semiring::value_type contribution) {
-        if (target_index.exactly_partitions(deduction, ctx)) {
+        if (target_compatible &&
+            target_index.matches_local_emissions(deduction, ctx)) {
           return contribution;
         }
         return Semiring::reject_target(contribution);

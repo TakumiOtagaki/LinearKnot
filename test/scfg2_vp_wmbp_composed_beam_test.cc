@@ -1158,6 +1158,45 @@ void check_coupled_online_bound(const std::string &sequence,
   assert(absent.probability == 0.0);
 }
 
+void check_target_probability_with_generated_scaffold_interior() {
+  using namespace cparty::scfg2;
+  std::string sequence =
+      "UUUUACCCAGACCUAGUGACCGUCCUGUUUGGGCUAAUAUCGAAAGGUUUAUAACCUACGCUGUAAUGGCAGACCUGGGAGCGUUUGACGAUAUUU";
+  std::string scaffold =
+      "...................................(((((((..((((.....))))(((((.................)))))....))))))).";
+  weights::RuntimeSnapshot owner(sequence, scaffold);
+  replay::WFinalLogWeightContext ctx(owner);
+  std::vector<engine::TracebackPair> target;
+  for (const auto &[i, j] : std::vector<std::pair<int, int>>{
+      {6,79},{7,78},{8,77},{9,76},{10,75},{13,72},{14,71},{16,70},
+      {17,69},{19,67},{22,34},{23,33},{24,32},{25,31},{36,95},
+      {37,94},{38,93},{39,92},{40,91},{41,90},{42,89},{45,57},
+      {46,56},{47,55},{48,54},{49,53},{58,84},{59,83},{60,82},
+      {61,81},{62,80}}) {
+    target.push_back({i, j, engine::TracebackPairLane::Square});
+  }
+  const ItemKey root{grammar::NonTerminal::W, 1, 96, -1, -1};
+  for (bool finite : {false, true}) {
+    const auto widths = finite ? replay::WFinalVpWmbpOnlineWidths::uniform(30)
+                               : replay::WFinalVpWmbpOnlineWidths{};
+    const auto plain = replay::run_w_final_vp_wmbp_online<
+        semirings::CoupledLogSumMaxSemiring>(ctx, 96, widths);
+    const auto targeted = replay::run_w_final_vp_wmbp_online_targeted(
+        ctx, 96, widths, target);
+    const auto value = plain.chart.get(root);
+    const auto constrained = targeted.chart.get(root);
+    assert(close(value.log_sum, constrained.log_sum));
+    assert(close(value.log_max, constrained.log_max));
+    assert(constrained.log_target <= constrained.log_sum + 1e-10);
+    if (!finite) {
+      // A VP(19,67) crosses a scaffold component containing the independently
+      // generated pair (49,53). Its target mass used to be falsely zero.
+      assert(close(constrained.log_sum, 42.537535882221064));
+      assert(close(constrained.log_target, 40.63955166800962));
+    }
+  }
+}
+
 }  // namespace
 
 int main(int argc, char **argv) {
@@ -1165,6 +1204,7 @@ int main(int argc, char **argv) {
   setenv("CPARTY_FIXED_ENERGY_PARAM_FILE",
          argc == 4 ? argv[3] : "params/rna_Turner04.par",
          1);
+  if (argc == 1) check_target_probability_with_generated_scaffold_interior();
   const std::string sequence = argc >= 3
       ? argv[1]
       : "GGUUUUCCGGGUACCUGGUGGCAGGUCACGUUUAUGCCGGCUGCUUUAUU";

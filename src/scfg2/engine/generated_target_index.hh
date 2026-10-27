@@ -2,6 +2,7 @@
 #define CPARTY_SCFG2_ENGINE_GENERATED_TARGET_INDEX_HH
 
 #include "scfg2/engine/traceback_pairs.hh"
+#include "scfg2/profiles/loop_context.hh"
 
 #include <algorithm>
 #include <limits>
@@ -10,10 +11,10 @@
 
 namespace cparty::scfg2::engine {
 
-// Observation-only index of the fixed generated output. A merge-sort tree
-// counts target pairs wholly inside [lo,hi] in O(log^2(P+2)), after
-// O(P log(P+2)) construction and storage. Deduction checks use a constant
-// number of intervals, rather than scanning the target for every item.
+// Observation-only index of the fixed generated output. Pair membership and
+// emitted-unpaired endpoint queries support complete-output conditioning.
+// A merge-sort tree also retains the narrower interval-partition observation,
+// counting pairs inside [lo,hi] in O(log^2(P+2)), after O(P log(P+2)) setup.
 class GeneratedTargetIndex {
  public:
   explicit GeneratedTargetIndex(std::vector<TracebackPair> target)
@@ -21,6 +22,11 @@ class GeneratedTargetIndex {
     std::sort(target_.begin(), target_.end(), before);
     target_.erase(std::unique(target_.begin(), target_.end(), traceback_pair_equal),
                   target_.end());
+    for (const auto &pair : target_) {
+      endpoints_.push_back(pair.i);
+      endpoints_.push_back(pair.j);
+    }
+    std::sort(endpoints_.begin(), endpoints_.end());
     tree_.resize(4 * target_.size());
     if (!target_.empty()) build(0, 0, target_.size());
   }
@@ -30,6 +36,42 @@ class GeneratedTargetIndex {
     std::size_t range_node_visits = 0;
   };
   const Stats &stats() const { return stats_; }
+
+  template <class Context>
+  bool compatible_with_scaffold(const Context &ctx, cand_pos_t n) const {
+    if (std::adjacent_find(endpoints_.begin(), endpoints_.end()) != endpoints_.end())
+      return false;
+    for (const auto &pair : target_) {
+      if (pair.i < 1 || pair.j > n || pair.i >= pair.j ||
+          !ctx.is_unpaired(pair.i) || !ctx.is_unpaired(pair.j)) return false;
+    }
+    return true;
+  }
+
+  // Complete-output conditioning on the shared paired/unpaired emission
+  // surface. Every generated pair must be requested, and no requested pair
+  // endpoint may be emitted unpaired. For valid complete derivations, the
+  // per-base emission partition therefore forces the entire target output.
+  // Unlike a bounding-span partition, this also handles VP crossing a
+  // scaffold component whose ordinary interior is consumed elsewhere.
+  template <class Context>
+  bool matches_local_emissions(const deductions::Deduction &deduction,
+                               const Context &ctx) const {
+    std::vector<TracebackPair> emitted;
+    append_deduction_generated_pairs(deduction, ctx, &emitted);
+    for (const auto &pair : emitted) {
+      if (!std::binary_search(target_.begin(), target_.end(), pair, before))
+        return false;
+    }
+    const auto unpaired = profiles::unpaired_emission(
+        deduction, [&](cand_pos_t position) { return ctx.is_unpaired(position); });
+    for (std::size_t k = 0; k < unpaired.count; ++k) {
+      const auto &run = unpaired.runs[k];
+      const auto first = std::lower_bound(endpoints_.begin(), endpoints_.end(), run.lo);
+      if (first != endpoints_.end() && *first <= run.hi) return false;
+    }
+    return true;
+  }
 
   template <class Context>
   bool exactly_partitions(const deductions::Deduction &deduction,
@@ -137,6 +179,7 @@ class GeneratedTargetIndex {
   }
 
   std::vector<TracebackPair> target_;
+  std::vector<cand_pos_t> endpoints_;
   std::vector<std::vector<cand_pos_t>> tree_;
   mutable Stats stats_;
 };
