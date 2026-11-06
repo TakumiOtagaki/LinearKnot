@@ -289,6 +289,9 @@ sequence/scaffold input, and the expected and observed output.
 
 ## Citation and license
 
+Software citation metadata is provided in [CITATION.cff](CITATION.cff).
+Please cite the specific release used in your work.
+
 This tool builds on CParty:
 
 Mateo Gray, Luke Trinity, Ulrike Stege, Yann Ponty, Sebastian Will, and

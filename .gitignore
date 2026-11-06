@@ -19,4 +19,6 @@ __pycache__/
 /logs/
 /third_party/
 /tmp/
+/release-draft.local.md
+/release-preparation.local.md
 .DS_Store

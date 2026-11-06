@@ -1,5 +1,19 @@
 # Release notes
 
+## 0.2.2
+
+Whole-structure probability evaluation now handles generated base pairs inside
+a scaffold component crossed by a VP state. The former interval-partition
+check could reject a valid output and report zero probability because it
+assigned an independently generated interior pair to the crossing VP branch.
+The corrected evaluator checks local paired and unpaired emissions against
+the requested complete output, with an initial scaffold-compatibility check.
+
+This fixes LinearKnot's target-probability consumer; energy parameters,
+partition functions, base-pair probabilities and MFE selection are unchanged.
+Regression tests cover the local ownership boundary and a 96-nt complete
+output in both unlimited and finite beam runs.
+
 
 ## 0.2.1
 

@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use LinearKnot, please cite this software release."
+type: software
+title: "LinearKnot: fixed-scaffold RNA pseudoknot ensembles, prediction, and accessibility"
+authors:
+  - family-names: Otagaki
+    given-names: Takumi
+version: 0.2.2
+repository-code: "https://github.com/TakumiOtagaki/LinearKnot"
+url: "https://github.com/TakumiOtagaki/LinearKnot"
+license: GPL-3.0-only
+abstract: >-
+  LinearKnot computes density-2 RNA pseudoknot ensembles conditioned on a
+  pseudoknot-free scaffold. It provides structure prediction, base-pair
+  probabilities, accessibility, loop profiles, sampling, suboptimal structures,
+  MEA, and centroid decoding, with exact and beam modes.
+keywords:
+  - RNA
+  - pseudoknots
+  - partition function
+  - accessibility
