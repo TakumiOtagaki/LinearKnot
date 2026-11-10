@@ -1,5 +1,29 @@
 # Release notes
 
+## 0.2.3
+
+An optional CONTRAfold-v2 / DP09 research backend now provides exact
+scaffold-conditioned base-pair probabilities (BPP), parameter-feature expectations,
+BPP vector–Jacobian products and whole-structure log likelihoods. Enable it
+with `-DLINEARKNOT_BUILD_CONTRAFOLD=ON`; see the
+[build and protocol guide](../experimental/contrafold/README.md).
+
+This interface uses original coefficients and a supplied noncrossing scaffold.
+It does not include learned coefficients, neural-network weights, scaffold
+sampling or averaging over scaffolds. The stable `linearknot` CLI and Python
+API keep their existing backend; the optional probe is a separate executable.
+DP09 scalar storage now accepts fractional values; its defaults are unchanged.
+The ordinary CONTRAfold multiloop branch is fixed, including pseudoknot branch
+boundaries. The default band multipliers remain 0.89 and 0.74.
+
+The snapshot includes independent provenance review and implementation checks
+against short complete noncrossing enumerations, finite-difference gradients
+and the research adapter. Those checks do not measure prediction accuracy or
+establish linear running time. The original adapter snapshot is also preserved
+at tag `contrafold-v1`; version and citation metadata are updated for this
+release. This backend is currently available from a repository checkout and is
+excluded from the explicitly packaged Python source distribution.
+
 ## 0.2.2
 
 Whole-structure probability evaluation now handles generated base pairs inside

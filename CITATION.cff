@@ -5,7 +5,7 @@ title: "LinearKnot: fixed-scaffold RNA pseudoknot ensembles, prediction, and acc
 authors:
   - family-names: Otagaki
     given-names: Takumi
-version: 0.2.2
+version: 0.2.3
 repository-code: "https://github.com/TakumiOtagaki/LinearKnot"
 url: "https://github.com/TakumiOtagaki/LinearKnot"
 license: GPL-3.0-only

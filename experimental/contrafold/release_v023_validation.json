@@ -1,0 +1,28 @@
+{
+  "passed": true,
+  "version": "0.2.3",
+  "scope_ja": "0.2.3メタデータ・CLI表示・既定OFFとCF研究バックエンドの検証。構造精度ベンチマーク又は研究全体の完成ではない。",
+  "adapter_snapshot_commit": "20eea6fe4e3a0aed0b6d977fd2888fe6a0f992cf",
+  "cli_version_output": "LinearKnot 0.2.3",
+  "ctest_stdout": "Internal ctest changing into directory: /tmp/linearknot-contrafold-release-20261110/build/cf\nTest project /tmp/linearknot-contrafold-release-20261110/build/cf\n    Start 106: contrafold_exact_backend\n1/1 Test #106: contrafold_exact_backend .........   Passed    0.12 sec\n\n100% tests passed, 0 tests failed out of 1\n\nTotal Test time (real) =   0.13 sec\n",
+  "backend_checks": {
+    "passed": true,
+    "enumeration_sequences": 5,
+    "derivative_coordinates": 12,
+    "max_logZ_error": 4.440892098500626e-16,
+    "max_bpp_error": 5.551115123125783e-16,
+    "max_vjp_error": 4.848554509273573e-10,
+    "max_likelihood_gradient_error": 7.409023838889084e-09
+  },
+  "default_option_off_and_backend_targets_absent": true,
+  "metadata_agreement": true,
+  "original_snapshot_records_preserved": {
+    "experimental/contrafold/validation.json": "2d1199104aefa3fcf1104f1268389857463e20b976565649a152309d9b110fea",
+    "experimental/contrafold/review_ja.json": "af8d8dfc9181545fab64d6a953c58a8aea92a4df2390494b4633d3bccd1b2534"
+  },
+  "tested_binaries_sha256": {
+    "build/cf/linearknot": "80bd34a8f15bc356f79c0f0e795a084282d1ea3de08caddace098932fbd90743",
+    "build/cf/experimental/contrafold/linearknot_contrafold_probe": "3e3beed7b1528567c0a0538e7bab00aa0665bb00a95875e0cc89b55043bf9ab7",
+    "build/cf/experimental/contrafold/linearknot_contrafold_score": "18fe344abe0e297cab86a42cef5e3d628ce5d3dc063ceec7a200922868cbf836"
+  }
+}
