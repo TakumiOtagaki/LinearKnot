@@ -1,0 +1,30 @@
+{
+  "passed": true,
+  "scope": "Implementation checks, not structural-accuracy evaluation",
+  "backend_test": {
+    "passed": true,
+    "enumeration_sequences": 5,
+    "derivative_coordinates": 12,
+    "max_logZ_error": 4.440892098500626e-16,
+    "max_bpp_error": 5.551115123125783e-16,
+    "max_vjp_error": 4.848554509273573e-10,
+    "max_likelihood_gradient_error": 7.409023838889084e-09
+  },
+  "existing_api_regressions": {
+    "runtime_snapshot": "passed via CTest",
+    "rules_core_exact_weight": "passed via CTest",
+    "exact_api": "passed executed from source root",
+    "beam_api": "passed executed from source root"
+  },
+  "initial_ctest_api_path_issue": "Two pre-existing API tests set params/rna_Turner04.par relative to cwd. CTest from build/cf fails their fixture lookup; both pass when run from source root. Tests and registration were left unchanged.",
+  "research_probe_parity": {
+    "matched_json_records": 13,
+    "conditional_evaluations": 6,
+    "excluded_field": "seconds",
+    "reference_binary_sha256": "96dcfcd4d10e0211f1c9d68dcb3747625977d4da66459eede0d6a19ab842d04f"
+  },
+  "tested_binaries_sha256": {
+    "linearknot_contrafold_probe": "3e3beed7b1528567c0a0538e7bab00aa0665bb00a95875e0cc89b55043bf9ab7",
+    "linearknot_contrafold_score": "18fe344abe0e297cab86a42cef5e3d628ce5d3dc063ceec7a200922868cbf836"
+  }
+}

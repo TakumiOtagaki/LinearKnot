@@ -301,3 +301,10 @@ RNA pseudoknots.” *Bioinformatics* 41(1), btae748 (2025).
 
 See [LICENSE](LICENSE) and [third-party notices](THIRD_PARTY_NOTICES.md)
 for the project's GPLv3 license and the bundled ViennaRNA terms.
+
+## Optional CONTRAfold research backend
+
+An [experimental CONTRAfold/DP09 backend](experimental/contrafold/README.md)
+provides exact conditional base-pair probabilities and parameter derivatives.
+Build with `-DLINEARKNOT_BUILD_CONTRAFOLD=ON`. This optional interface is
+separate from the stable CLI and Python API and leaves their scoring unchanged.

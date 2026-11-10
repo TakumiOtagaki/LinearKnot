@@ -55,7 +55,7 @@ void RuntimeSnapshot::initialize_factors() {
     const double energy = temperature_energy(g, h, ratio);
     return -(p.model_details.pf_smooth ? energy : std::trunc(energy)) * 10. / p.kT;
   };
-  const auto pk = [&](int g) { return factor(g, 3. * g); };
+  const auto pk = [&](double g) { return factor(g, 3. * g); };
   log_pk_ = {pk(model_.exterior), pk(model_.in_multiloop), pk(model_.in_pseudoloop),
       pk(model_.band), pk(model_.unpaired), pk(model_.nested_region),
       factor(model_.multiloop_closing, ML_closingdH), factor(model_.multiloop_branch, ML_interndH),

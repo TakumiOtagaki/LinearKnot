@@ -1,0 +1,115 @@
+{
+  "passed": true,
+  "language": "ja",
+  "reviewed_UTC": "2026-11-10T03:40:36.511820+00:00",
+  "review_scope_ja": "CONTRAfold/DP09実験用バックエンドの公開差分について、コード由来・単位・文書と公開範囲を独立に読取確認した。研究成果の精度評価や研究全体の完了監査ではない。",
+  "base_linearknot_commit": "8ca7f6f8dc437dd3644a73c7c23be236e3e08b73",
+  "origin_checks": [
+    {
+      "path": "src/contra_scores.cc",
+      "source_commit": "bdbaaa04e4c0bea908e9783133bff492ac546ff5",
+      "check": "指定研究commitの原ファイルとbyte一致。"
+    },
+    {
+      "path": "src/contra_scores.hh",
+      "source_commit": "bdbaaa04e4c0bea908e9783133bff492ac546ff5",
+      "check": "指定研究commitの原ファイルとbyte一致。"
+    },
+    {
+      "path": "src/contrafold_context.hh",
+      "source_commit": "bdbaaa04e4c0bea908e9783133bff492ac546ff5",
+      "check": "指定研究commitの原ファイルとbyte一致。"
+    },
+    {
+      "path": "src/learning.hh",
+      "source_commit": "bdbaaa04e4c0bea908e9783133bff492ac546ff5",
+      "check": "元のSnapshot/Restore等を保存し、旧未使用3座標APIの後半とinclude guardだけを整理。local_adaptationsに記録済。"
+    },
+    {
+      "path": "src/score_structure.cc",
+      "source_commit": "bdbaaa04e4c0bea908e9783133bff492ac546ff5",
+      "check": "指定研究commitの原ファイルとbyte一致。"
+    },
+    {
+      "path": "src/dp09_probe.cc",
+      "source_commit": "b1d87c6ad70ef350707b3670cf8db5f25ffd0eab",
+      "check": "指定研究commitの原ファイルとbyte一致。"
+    },
+    {
+      "path": "third_party/linearsampling/utility.h",
+      "source_commit": "1492a93f3616bf8ae8ab9177f9bb85a53da4b155",
+      "check": "固定したLinearSampling上流commitとbyte一致。"
+    },
+    {
+      "path": "third_party/linearsampling/feature_weight.h",
+      "source_commit": "1492a93f3616bf8ae8ab9177f9bb85a53da4b155",
+      "check": "固定したLinearSampling上流commitとbyte一致。"
+    },
+    {
+      "path": "third_party/linearsampling/LICENSE",
+      "source_commit": "1492a93f3616bf8ae8ab9177f9bb85a53da4b155",
+      "check": "固定したLinearSampling上流commitとbyte一致。"
+    }
+  ],
+  "implementation_checks_ja": [
+    "通常ループのCONTRAfold-v2係数とDP09由来係数を使うexact条件付き計算であり、既存の共有deduction generator・schedule・outside計算を再利用する。",
+    "通常のlinearknot CLIおよびPython APIとは別ターゲット。CMakeオプションは既定OFFで、この差分は通常CLIの重み選択をCONTRAfoldへ変更しない。",
+    "coreの変更はDP09加算スカラのintからdoubleへの変更と、その受取lambdaのdouble化。全既定係数の名前と値を元commitと照合し一致。",
+    "一つの供給土台に条件付けたBPPであり、土台抽選・複数土台の混合・線形時間推論はこの公開物に含まれない。無制約の全PK構造分布とは記載していない。",
+    "固定土台対はBPP1、生成対のCF pair項はemissionで一度加算する設計。条件付き分布内で一定な土台pair項の省略を、異なる土台の混合重みへそのまま用いるとは記載していない。",
+    "12座標のうち通常multiloop branchは固定CF multi_paired=-0.9253883752を使い座標6は無効。stack/internal倍率0.89/0.74は冪指数ではなく、座標10/11で加算変位できる。"
+  ],
+  "units_and_definitions_ja": [
+    "BPP・scaffold・multiloop・VJP・logZ・条件付き構造尤度をREADME中で説明。位置は1起点、生成対はcanonical6型かつ位置差4以上。",
+    "加算係数変位はkcal/mol、core保存値は10 cal/mol単位なので1 kcal/molを100保存単位として加える。CONTRAfoldの通常項は無次元対数potential。",
+    "expected_featureは-RT*d(log local weight)/d(displacement)の条件付き期待値と明記。加算座標のcount-like特徴と、倍率座標のenergy-equivalent特徴を区別し、全てを出現確率と呼ばない。",
+    "RTはkcal/mol、実装は37℃を要求。ハイブリッド係数を個別に実測された物理自由エネルギーとは解釈しない。",
+    "到達不能構造のlog_probabilityはnullでgradientは意味を持たないこと、errorを数値結果として扱わないことを明記。"
+  ],
+  "third_party_provenance_ja": [
+    "LinearSampling固定commitのutility.h・feature_weight.h・LICENSEの3点を上流git objectとbyte照合し一致。著者creditと元LICENSEをそのまま保持。",
+    "ROOTのGPL文書で第三者ファイルを再ライセンスしたとは記載せず、LinearSamplingの利用条件と有償再配布上の条件をTHIRD_PARTY_NOTICESで区別。",
+    "Python sdistは明示include方式でexperimentalを追加せず、今回の第三者ファイルを標準Python配布へ加えたとは記載していない。",
+    "DP09はCPartyにおけるrna_DirksPierce09.parという保持集合名として記載し、未確認の著者年の断定を避けた。"
+  ],
+  "review_comments_resolved_ja": [
+    "DP09の冒頭表現をCPartyの保持パラメータ集合名へ明確化。",
+    "期待特徴の定義とRTの単位を追記。",
+    "旧未使用3座標feature/evaluation APIをlearning.hhから除去し、変更前hashと局所変更をprovenanceに保存。"
+  ],
+  "validation_scope_ja": "主担当が最終差分で行ったbuild/CTest・有限差分・研究probeとの13JSON一致はvalidation.jsonに記録され、passedを確認した。本レビュー担当は同じ計算を独立再実行していない。独立確認はsourceと来歴、文書、値/型の差分照合である。",
+  "validation_record": "experimental/contrafold/validation.json",
+  "validation_record_sha256": "2d1199104aefa3fcf1104f1268389857463e20b976565649a152309d9b110fea",
+  "limitations_ja": [
+    "短い固定例での実装確認は構造予測精度の向上、長配列の時間・メモリ優位、パラメータ再推定の有効性を示さない。",
+    "研究用の学習済み係数・RNet2出力・NN重み・データ集合・デコーダ・stem保持policyはこのsnapshotに含まれない。",
+    "安定API全体や第三者ライセンス一般の包括監査ではない。既存APIテストのcwd依存は主担当がvalidation.jsonに区別して記録し、既存登録は変更していない。"
+  ],
+  "scientific_accuracy_improvement_claim": false,
+  "current_research_completion_claim": false,
+  "formal_report_or_PDF_QA_claim": false,
+  "reviewer_changes_ja": "本review_ja.jsonの新規保存のみ。コード修正は主担当へ提案し、研究repoのsrc/vendor/build/evidence/formal PDFを編集していない。",
+  "hashes": {
+    "CMakeLists.txt": "b7b66dafd613e9c74eafddb77513b05447baf7f7bd3a346d4651fc26e741ac86",
+    "README.md": "b4750fdba55586700d59bac38f0e4191d8b0176e95c9ddc4d0493a5711d83a5c",
+    "THIRD_PARTY_NOTICES.md": "ae1bae447b1d32ab95149d42a17a38128f37adb8a43c4cb9b408fbaa7ee87ff0",
+    "pyproject.toml": "64bb3aa2de67a0a154dda1c1051eefcee5377991439c9441859b7fc6dfceab56",
+    "VERSION": "998f6b887ed7a6ef44e84210d0237b715bed42ea7254f48dc418afec0a484103",
+    "src/scfg2/weights/pseudoknot_parameters.hh": "ffe21479ad1568f76496cde73cb93238a29ac0a5f3e448e355dcc3c84710a4f5",
+    "src/scfg2/weights/runtime_snapshot.cc": "2ad83212f2ab97874cd3a0d84606a7c88fe2777f1bed6a2f068f9cd9b05b9926",
+    "experimental/contrafold/CMakeLists.txt": "569f3a07a4e7d32d6e395287265aaa168c0b76957369037b44f6ec7ec2f62c51",
+    "experimental/contrafold/README.md": "3549b57982d6f7ef2088a6b2057c98581bc870d51decb93b60b0eb7b601d2c02",
+    "experimental/contrafold/provenance.json": "3a1bc7c08454ba5b773f20b71255c4d39e87ab7fe73cc64b30a01f93105ce49c",
+    "experimental/contrafold/src/contra_scores.cc": "6ae5540d1177b5d57abda24d3e9a6f6f0ed8ae22927f863539b6ec12e0f59dcf",
+    "experimental/contrafold/src/contra_scores.hh": "db2a4c20e8b3766cfa5a7a970328604849917ad2b4436ab029ae2d5043eb3959",
+    "experimental/contrafold/src/contrafold_context.hh": "f1733b82de18e5830128b964c6dfb9180e2b582466d33760e214f131c27848c9",
+    "experimental/contrafold/src/dp09_probe.cc": "53be263331eb2d9b7677e2059c0a6e496f5fbf486ed617baf9f186e257b25348",
+    "experimental/contrafold/src/learning.hh": "46e6e6585acf53294842893e21b4791fc4e322865ce8e909ee2075d6647b692f",
+    "experimental/contrafold/src/score_structure.cc": "a230198321988478ff0a3b949a13e6b6479e0145f77a88e3d0cf7a98719a39ae",
+    "experimental/contrafold/test/check_backend.py": "16501435b58dd02333256d004c0ffe02ac9c841eac3a7e9e04b17b3074589232",
+    "experimental/contrafold/third_party/linearsampling/LICENSE": "2f31e5d67037e9961d02c695e2f0d1a813c36bb8b56fc8442a68f7c524d6f8df",
+    "experimental/contrafold/third_party/linearsampling/feature_weight.h": "4fc50ef32c665306f0332d2a373f4ce9cfcba5789a0d65d465a9cc6757dada24",
+    "experimental/contrafold/third_party/linearsampling/utility.h": "2e04eef2d2897978f6d3bf2e6a05b34b61a85642e929367e98c311297d2ab5ed",
+    "experimental/contrafold/validation.json": "2d1199104aefa3fcf1104f1268389857463e20b976565649a152309d9b110fea"
+  }
+}

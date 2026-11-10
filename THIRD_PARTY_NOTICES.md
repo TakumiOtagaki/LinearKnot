@@ -67,3 +67,18 @@ original dataset's redistribution terms have been independently verified.
 Top-level `params/` is not included in the Python sdist/wheel. Native commands
 still incorporate the bundled ViennaRNA default tables; absence of those
 standalone files does not remove the thermodynamic data/backend boundary.
+
+## Optional CONTRAfold backend / LinearSampling
+
+`experimental/contrafold/third_party/linearsampling/utility.h` and
+`feature_weight.h` are unmodified copies from
+[LinearSampling](https://github.com/LinearFold/LinearSampling), commit
+`1492a93f3616bf8ae8ab9177f9bb85a53da4b155`. They supply the CONTRAfold-v2
+feature helpers and coefficient tables used by the optional research backend.
+Credit belongs to the LinearSampling and CONTRAfold authors; `utility.h`
+credits Kai Zhao and Dezhong Deng. The complete LinearSampling license is
+retained alongside these files. It permits research, educational and commercial
+use/modification subject to its conditions, including attribution and limits
+on fee-based redistribution. The root GPL text does not relicense these files.
+They are used only when the optional backend is enabled and are not added to
+the stable Python package by this change.

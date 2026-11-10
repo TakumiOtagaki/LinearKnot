@@ -1250,3 +1250,9 @@ if(BUILD_TESTING)
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test/tools/check_scfg2_scfg_dependency_gate.sh
   )
 endif()
+
+# Opt-in research backend, separate from the stable CLI/API.
+option(LINEARKNOT_BUILD_CONTRAFOLD "Build experimental CONTRAfold/DP09 backend" OFF)
+if(LINEARKNOT_BUILD_CONTRAFOLD)
+  add_subdirectory(experimental/contrafold)
+endif()

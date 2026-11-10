@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "scope": "Original CONTRAfold-v2 / continuous DP09 exact conditional research backend; no fitted coefficients or NN models",
+  "base_linearknot_commit": "8ca7f6f8dc437dd3644a73c7c23be236e3e08b73",
+  "research_source_commit": "bdbaaa04e4c0bea908e9783133bff492ac546ff5",
+  "probe_source_commit": "b1d87c6ad70ef350707b3670cf8db5f25ffd0eab",
+  "linearsampling_commit": "1492a93f3616bf8ae8ab9177f9bb85a53da4b155",
+  "linearsampling_url": "https://github.com/LinearFold/LinearSampling",
+  "copied_sources": {
+    "src/contra_scores.cc": "6ae5540d1177b5d57abda24d3e9a6f6f0ed8ae22927f863539b6ec12e0f59dcf",
+    "src/contra_scores.hh": "db2a4c20e8b3766cfa5a7a970328604849917ad2b4436ab029ae2d5043eb3959",
+    "src/contrafold_context.hh": "f1733b82de18e5830128b964c6dfb9180e2b582466d33760e214f131c27848c9",
+    "src/dp09_probe.cc": "53be263331eb2d9b7677e2059c0a6e496f5fbf486ed617baf9f186e257b25348",
+    "src/learning.hh": "46e6e6585acf53294842893e21b4791fc4e322865ce8e909ee2075d6647b692f",
+    "src/score_structure.cc": "a230198321988478ff0a3b949a13e6b6479e0145f77a88e3d0cf7a98719a39ae",
+    "third_party/linearsampling/LICENSE": "2f31e5d67037e9961d02c695e2f0d1a813c36bb8b56fc8442a68f7c524d6f8df",
+    "third_party/linearsampling/feature_weight.h": "4fc50ef32c665306f0332d2a373f4ce9cfcba5789a0d65d465a9cc6757dada24",
+    "third_party/linearsampling/utility.h": "2e04eef2d2897978f6d3bf2e6a05b34b61a85642e929367e98c311297d2ab5ed"
+  },
+  "local_adaptations": {
+    "src/learning.hh": "Retain only the snapshot/restore/model definitions consumed by the probe; remove the unused earlier three-coordinate feature/evaluation API and rename its include guard."
+  },
+  "original_copied_sources": {
+    "src/contra_scores.cc": "6ae5540d1177b5d57abda24d3e9a6f6f0ed8ae22927f863539b6ec12e0f59dcf",
+    "src/contra_scores.hh": "db2a4c20e8b3766cfa5a7a970328604849917ad2b4436ab029ae2d5043eb3959",
+    "src/contrafold_context.hh": "f1733b82de18e5830128b964c6dfb9180e2b582466d33760e214f131c27848c9",
+    "src/dp09_probe.cc": "53be263331eb2d9b7677e2059c0a6e496f5fbf486ed617baf9f186e257b25348",
+    "src/learning.hh": "1709b819076dc4fbf649017638437ee65f685c8f2004e6e3ede50e76e4dcf196",
+    "src/score_structure.cc": "a230198321988478ff0a3b949a13e6b6479e0145f77a88e3d0cf7a98719a39ae",
+    "third_party/linearsampling/LICENSE": "2f31e5d67037e9961d02c695e2f0d1a813c36bb8b56fc8442a68f7c524d6f8df",
+    "third_party/linearsampling/feature_weight.h": "4fc50ef32c665306f0332d2a373f4ce9cfcba5789a0d65d465a9cc6757dada24",
+    "third_party/linearsampling/utility.h": "2e04eef2d2897978f6d3bf2e6a05b34b61a85642e929367e98c311297d2ab5ed"
+  }
+}
