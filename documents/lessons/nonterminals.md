@@ -213,7 +213,7 @@ VP の右に腕をつなぐ途中の状態。右に枝があれば WIP を置く
 |規則|選んだ一回の展開に含まれる子の積|選択の意味|局所重み|
 |---|---|---|---|
 | `BE_BASE_SAMEPAIR` | $1$ | 外側の対と内側の対が一致。局所重み 1。 | $1$ |
-| `BE_STACK` | $I(\mathrm{BE}(i+1,j-1,u*,v*))$ | 次の隣接した固定対へ進む。u*,v* は通常 u,v と等しい。展開関数には両目印一致時に両方を進める座標処理もある。 | バンド内のスタック因子 |
+| `BE_STACK` | $I(\mathrm{BE}(i+1,j-1;u^{\prime},v^{\prime}))$ | 次の隣接した固定対へ進む。$(i,j)=(u,v)$ なら $(u^{\prime},v^{\prime})=(i+1,j-1)$、それ以外なら $(u^{\prime},v^{\prime})=(u,v)$。 | バンド内のスタック因子 |
 | `BE_INTERNAL_LOOP` | $I(\mathrm{BE}(k,l,u,v))$ | 次の固定対との間に内部ループを作る。 | バンド内の内部ループ因子 |
 | `BE_WIP_WIP` | $I(\mathrm{WIP}(i+1,k-1))\,I(\mathrm{BE}(k,l,u,v))\,I(\mathrm{WIP}(l+1,j-1))$ | 左右に枝を持つ。 | $\mathrm{ap}\,\mathrm{bp}^{2}$ |
 | `BE_WIP_BASEPAIR` | $I(\mathrm{WIP}(i+1,k-1))\,I(\mathrm{BE}(k,l,u,v))$ | 左に枝、右は未対合列。 | $\mathrm{cp}^{j-l-1}\,\mathrm{ap}\,\mathrm{bp}^{2}$ |

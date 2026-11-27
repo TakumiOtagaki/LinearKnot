@@ -2,6 +2,11 @@
 
 **[inside・outside を基礎から通して見る（30分07秒、日本語字幕付き MP4）](media/complete.mp4)** ｜ [通しの字幕](media/complete.srt) ｜ [基礎編だけ見る](media/chapter-00.mp4)
 
+| 続けて見る講義 | 時間 | 字幕・テキスト |
+|---|---:|---|
+| [非終端記号編　15種類の状態を木で読む](media/nonterminals.mp4) | 7分24秒 | [字幕](media/nonterminals.srt)・[原稿](nonterminals-transcript.md)・[全57規則の数式](nonterminals.md) |
+| [擬似ノット演習編　腕の配置から規則を選ぶ](media/pk-workshop.mp4) | 11分04秒 | [字幕](media/pk-workshop.srt)・[数式つき原稿](pk-workshop-transcript.md)・[導出木の図譜](derivations/README.md) |
+
 GitHub のファイル画面で「View raw」またはダウンロードを選ぶと動画を開けます。章選択に対応するプレーヤーでは目次から途中の章へ移動できます。
 
 [初めての方向けの用語・記号ガイド](first-words.md)では、塩基対・重み・確率と、式に使う印を小さな例で確認できます。
