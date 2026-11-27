@@ -3,9 +3,10 @@ from math import pi, sin
 
 from PIL import ImageDraw
 
+from motion import record
 from typeset import formulas
 
-BG = "#0f2026"
+BG = "#000000"
 TEXT = "#f3f9fa"
 FIXED = "#6ecde9"
 ADDED = "#e3a8ff"
@@ -35,6 +36,8 @@ def base_arc_panel(canvas, slide, font):
         if "focus" in spec and [i,j] not in spec["focus"]:
             color = "#3e647a" if index<len(fixed) else "#80648a"
         d.line(points, fill=color,width=4)
+        if "focus" not in spec or [i,j] in spec["focus"]:
+            record(canvas, points, "arc", str(i),str(j), color)
     d.line((left,axis,right,axis),fill=DIM,width=2)
     for i in range(1,length+1):
         xx=x(i)
@@ -42,6 +45,7 @@ def base_arc_panel(canvas, slide, font):
     for i in spec["ticks"]:
         d.text((x(i),axis+10),str(i),fill=TEXT,font=font(19),anchor="mt")
     for i,j,color in spec.get("bars",[]):
+        record(canvas,[(x(i)-gap*.33,axis+42),(x(j)+gap*.33,axis+42)], "region",color=color)
         d.rounded_rectangle((x(i)-gap*.33,axis+37,x(j)+gap*.33,axis+47),radius=3,fill=color)
     d.text((61,455),spec["caption"],fill=TEXT,font=font(22))
     d.line((814,228,814,496),fill=DIM,width=2)

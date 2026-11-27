@@ -28,8 +28,9 @@ for chapter in chapters:
     with av.open(media) as c:
         assert [s.type for s in c.streams] == ["video", "audio", "subtitle"]
         assert c.streams.video[0].codec_context.name == "h264"
+        fps = float(c.streams.video[0].average_rate)
         frames = sum(1 for frame in c.decode(video=0))
-        assert frames > 0 and abs(frames / 5 - cues[-1]["end"]) < 0.35
+        assert frames > 0 and abs(frames / fps - cues[-1]["end"]) < 0.35
     with av.open(media) as c:
         frames_audio = c.decode(audio=0)
         duration = sum(f.samples / f.sample_rate for f in frames_audio)

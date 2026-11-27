@@ -41,8 +41,8 @@ def build(folder, chapters):
             ffmpeg("-i", str(source), "-map", "0:v:0", "-c", "copy", str(clip))
             with av.open(str(clip)) as video:
                 stream = video.streams.video[0]
-                assert stream.average_rate == 5
-                video_samples = stream.frames * (RATE // 5)
+                fps = stream.average_rate
+                video_samples = round(stream.frames * RATE / fps)
             with wave.open(str(OUT / name / "audio.wav"), "rb") as audio:
                 assert (audio.getframerate(), audio.getsampwidth(), audio.getnchannels()) == (RATE, 2, 1)
                 samples = audio.getnframes()
@@ -106,7 +106,7 @@ def build(folder, chapters):
         last = None
         for frame in movie.decode(video=0):
             last = frame
-        assert last is not None and abs(last.time + 0.2 - elapsed / RATE) < 0.35
+        assert last is not None and abs(last.time + 1 / float(fps) - elapsed / RATE) < 0.35
     target.replace(OUT / target.name)
     srt.replace(OUT / srt.name)
     (OUT / "complete-chapters.json").write_text(json.dumps(positions, ensure_ascii=False, indent=2))

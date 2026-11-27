@@ -6,6 +6,7 @@ import re
 
 from PIL import Image, ImageDraw
 
+from motion import record
 from typeset import formulas, layout_tree
 
 
@@ -73,6 +74,8 @@ def draw_arc(canvas, spec, font, box):
             points.append(((x(i)+x(j))/2-(x(j)-x(i))/2*math.cos(angle),
                            y+(-1 if color==FIXED else 1)*h*math.sin(angle)))
         draw.line(points,fill=ink,width=4 if active else 2)
+        if active:
+            record(canvas,points,"arc",str(i),str(j),ink)
     draw.line((x(a),y,x(b),y),fill="#bed0d1",width=2)
     for pos in range(a,b+1):
         xx=x(pos)
@@ -85,6 +88,7 @@ def draw_arc(canvas, spec, font, box):
     for i,region in enumerate(spec.get("regions",[])):
         tag,start,end = region
         col=REGIONS[i%len(REGIONS)]
+        record(canvas,[(x(start)-3,bottom_arc+33),(x(end)+3,bottom_arc+33)],"region",color=col)
         draw.line((x(start)-3,bottom_arc+33,x(end)+3,bottom_arc+33),fill=col,width=5)
         draw.text((left+i*((right-left)/max(1,len(spec["regions"]))),bottom-22),
                   tag,font=font(16),fill=col)
@@ -92,7 +96,7 @@ def draw_arc(canvas, spec, font, box):
 
 def structure_panel(canvas, slide, font, subtitle):
     draw = ImageDraw.Draw(canvas)
-    draw.rectangle((40,177,1240,512),fill="#0f2026")
+    draw.rectangle((40,177,1240,512),fill="#000000")
     draw_arc(canvas,slide["arc"],font,(56,183,769,433))
     draw.line((794,188,794,430),fill="#34535b",width=2)
     if slide.get("original_figure") and subtitle in [v["text"] for v in slide["sentences"][:2]]:

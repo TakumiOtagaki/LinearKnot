@@ -12,6 +12,7 @@ synthesis settings, use a fresh --output directory to avoid old audio.
 The verification utility additionally requires PyAV.
 """
 import argparse
+from functools import lru_cache
 import hashlib
 import io
 import json
@@ -24,6 +25,8 @@ import wave
 
 from PIL import Image, ImageDraw, ImageFont
 import imageio_ffmpeg
+import av
+from motion import FPS, animate, timeline, record
 from typeset import math_panel
 from structure_arcs import structure_panel
 from base_arcs import base_arc_panel
@@ -72,8 +75,13 @@ def wrapped(draw, text, font, width):
     return lines
 
 
-def frame(chapter, idx, slide, subtitle, path):
-    canvas = Image.new("RGB", (1280, 720), "#0f2026")
+@lru_cache(maxsize=96)
+def regular(size):
+    return ImageFont.truetype(FONT,size)
+
+
+def frame(chapter, idx, slide, subtitle, path=None):
+    canvas = Image.new("RGB", (1280, 720), "#000000")
     d = ImageDraw.Draw(canvas)
     def label(x, y, string, size, color="#eaf1ed", bold=False):
         d.text((x, y), string, font=ImageFont.truetype(BOLD if bold else FONT, size), fill=color)
@@ -85,6 +93,7 @@ def frame(chapter, idx, slide, subtitle, path):
         font = ImageFont.truetype(FONT, 32)
         for chunk in wrapped(d, line, font, 1130):
             d.text((77, y), chunk, font=font, fill="#b9edd9")
+            record(canvas,[(77,y+43),(77+max(8,d.textlength(chunk,font=font)),y+43)],"line")
             y += 50
     if y > 510:
         raise ValueError("Slide content overlaps subtitles: " + slide["title"])
@@ -102,13 +111,13 @@ def frame(chapter, idx, slide, subtitle, path):
             slope = 4.1 if idx == 1 else 4
             endpoints = [(origin[0]+165*x, origin[1]-13*(4+slope*(x-2))) for x in (1.15,3.1)]
             d.line(endpoints, fill="#efa66a", width=3)
-            label(728, 455, "比で測る傾き 4.1" if idx==1 else "一点での傾き 4",23,"#ffc178")
+            label(728, 455, "比で測る傾き 4.1" if idx==1 else "1点での傾き 4",23,"#ffc178")
         for x in ((2,3) if idx==0 else (2,)):
             px,py=graphpos(x)
             d.ellipse((px-6,py-6,px+6,py+6),fill="#ffc178")
             label(px+10,py-20,f"({x}, {x*x})",21,"#ffc178")
         label(732,365,"横軸　入力の数",26)
-        label(732,417,"縦軸　二乗した出力",26)
+        label(732,417,"縦軸　2乗した出力",26)
     if chapter["id"] == "00" and idx in (4,5):
         tags = ["入力 2","1 を足す","4 を掛ける","出力 12"]
         for k,tag in enumerate(tags):
@@ -228,13 +237,14 @@ def frame(chapter, idx, slide, subtitle, path):
             d.rectangle((x,463,x+24,486),fill=color)
             label(x+34,459,tag or "未担当",21)
     if slide.get("arc"):
-        structure_panel(canvas, slide, lambda size: ImageFont.truetype(FONT, size), subtitle)
+        structure_panel(canvas, slide, regular, subtitle)
     elif slide.get("base_arc"):
-        base_arc_panel(canvas, slide, lambda size: ImageFont.truetype(FONT, size))
+        base_arc_panel(canvas, slide, regular)
     elif slide.get("latex") or slide.get("tree"):
-        math_panel(canvas, slide, lambda size: ImageFont.truetype(FONT, size))
-    d.rectangle((0, 513, 1280, 678), fill="#20343c")
-    font = ImageFont.truetype(FONT, 30)
+        math_panel(canvas, slide, regular)
+    d.rectangle((0, 513, 1280, 678), fill="#000000")
+    d.line((58,513,1222,513),fill="#494d53",width=2)
+    font = regular(30)
     rows = wrapped(d, subtitle, font, 1160)
     if len(rows) > 4:
         raise ValueError("Subtitle exceeds four lines: " + subtitle)
@@ -242,7 +252,9 @@ def frame(chapter, idx, slide, subtitle, path):
         d.text((59, 525 + i * 36), row, font=font, fill="#fffef7")
     label(59, 684, CREDIT, 19, "#adc1bb")
     label(1070, 684, f"{idx+1:02d} / {len(chapter['slides']):02d}", 19, "#adc1bb")
-    canvas.save(path)
+    if path is not None:
+        canvas.save(path)
+    return canvas
 
 
 def timestamp(t):
@@ -256,29 +268,41 @@ def timestamp(t):
 def render(chapter, output, cache):
     folder = output / ("chapter-" + chapter["id"])
     folder.mkdir(exist_ok=True)
-    cues, segments, audio_frames, transcript = [], [], [], []
+    cues, audio_frames, transcript = [], [], []
     sample_count = 0
+    emitted = 0
     rate = 24000
-    for i, slide in enumerate(chapter["slides"]):
-        for sentence in slide["sentences"]:
-            text = sentence["text"]
-            reading = sentence.get("reading", text)
-            wav = speech(reading, cache)
-            with wave.open(str(wav)) as w:
-                assert w.getframerate() == rate and w.getnchannels() == 1 and w.getsampwidth() == 2
-                frames = w.readframes(w.getnframes())
-            n = len(frames) // 2
-            start, end = sample_count / rate, (sample_count + n) / rate
-            num = len(cues) + 1
-            png = folder / f"frame-{num:03d}.png"
-            frame(chapter, i, slide, text, png)
-            segments.append(f"file '{png.name}'\nduration {(end-start):.8f}\n")
-            audio_frames.append(frames)
-            cues.append(f"{num}\n{timestamp(start)} --> {timestamp(end)}\n{text}\n")
-            transcript.append(dict(start=start, end=end, text=text, reading=reading, wav=wav.name))
-            sample_count += n
-    segments.append(f"file '{png.name}'\n")
-    (folder/"images.ffconcat").write_text("ffconcat version 1.0\n" + "".join(segments))
+    video_path = folder/"animated-silent.mp4"
+    with av.open(str(video_path),"w") as video:
+        stream = video.add_stream("libx264",rate=FPS)
+        stream.width,stream.height,stream.pix_fmt = 1280,720,"yuv420p"
+        stream.codec_context.thread_count = 3
+        stream.options = {"preset":"veryfast","crf":"21"}
+        for i, slide in enumerate(chapter["slides"]):
+            for cue_index,sentence in enumerate(slide["sentences"]):
+                text = sentence["text"]
+                reading = sentence.get("reading", text)
+                wav = speech(reading, cache)
+                with wave.open(str(wav)) as w:
+                    assert w.getframerate() == rate and w.getnchannels() == 1 and w.getsampwidth() == 2
+                    audio = w.readframes(w.getnframes())
+                n = len(audio) // 2
+                start, end = sample_count / rate, (sample_count+n) / rate
+                num = len(cues)+1
+                still = frame(chapter, i, slide, text,folder/f"frame-{num:03d}.png")
+                steps = timeline(still, chapter["id"], i+1, sentence, cue_index)
+                count = round(end*FPS)-emitted
+                for tick in range(count):
+                    visual = animate(still,steps,tick,count,cue_index)
+                    for packet in stream.encode(av.VideoFrame.from_image(visual)):
+                        video.mux(packet)
+                emitted+=count
+                audio_frames.append(audio)
+                cues.append(f"{num}\n{timestamp(start)} --> {timestamp(end)}\n{text}\n")
+                transcript.append(dict(start=start, end=end, text=text, reading=reading, wav=wav.name))
+                sample_count += n
+        for packet in stream.encode():
+            video.mux(packet)
     with wave.open(str(folder/"audio.wav"), "wb") as w:
         w.setparams((1, 2, rate, 0, "NONE", "not compressed"))
         w.writeframes(b"".join(audio_frames))
@@ -286,13 +310,11 @@ def render(chapter, output, cache):
     srt = output / f"chapter-{chapter['id']}.srt"
     srt.write_text("\n".join(cues))
     target = output / f"chapter-{chapter['id']}.mp4"
-    subprocess.run([FFMPEG, "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0",
-                    "-i", str(folder/"images.ffconcat"), "-i", str(folder/"audio.wav"), "-i", str(srt),
-                    "-map","0:v","-map","1:a","-map","2:s","-c:v","libx264","-threads","3",
-                    "-vf","fps=5,tpad=stop_mode=clone:stop_duration=4","-tune","stillimage","-preset","veryfast","-crf","19",
-                    "-pix_fmt","yuv420p","-c:a","aac","-b:a","96k","-c:s","mov_text",
+    subprocess.run([FFMPEG, "-hide_banner", "-loglevel", "error", "-y", "-i", str(video_path), "-i", str(folder/"audio.wav"), "-i", str(srt),
+                    "-map","0:v","-map","1:a","-map","2:s","-c:v","copy","-c:a","aac","-b:a","96k","-c:s","mov_text",
                     "-metadata:s:s:0","language=jpn","-metadata","title="+chapter["title"],
                     "-movflags","+faststart","-t",str(sample_count/rate),str(target)],check=True)
+    video_path.unlink()
     print(target, round(sample_count/rate, 1), flush=True)
 
 

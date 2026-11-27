@@ -2,11 +2,11 @@
   "00": {
     "1": {
       "latex": [
-        "f(x)=x^2",
+        "f(x)=x\\cdot x=x^2",
         "f(2)=4,\\quad f(3)=9"
       ],
       "tree": {
-        "label": "計算図：× 二乗",
+        "label": "計算図：× 2乗",
         "children": [
           {
             "label": "同じ入力 x",
@@ -39,6 +39,7 @@
     },
     "3": {
       "latex": [
+        "x=2,\\quad h\\ne0,\\quad x_{\\rm new}=2+h",
         "\\frac{(2+h)^2-4}{h}=4+h",
         "\\lim_{h\\to0}(4+h)=4"
       ],
@@ -58,8 +59,8 @@
     },
     "4": {
       "latex": [
-        "\\frac{d}{dx}x^2=2x",
-        "z=xy,\\quad\\frac{\\partial z}{\\partial x}=y"
+        "f(x)=x^2,\\quad f'(x)=2x",
+        "z=xy,\\quad y=5,\\quad\\frac{\\partial z}{\\partial x}=y=5"
       ],
       "tree": {
         "label": "×   z",
@@ -77,27 +78,28 @@
     },
     "5": {
       "latex": [
-        "y=4(x+1),\\quad y(2)=12",
-        "\\frac{dy}{dx}=4\\cdot1=4"
+        "x=2,\\quad u=x+1,\\quad v=4u",
+        "u=2+1=3,\\quad v=4\\cdot3=12",
+        "\\frac{dv}{dx}=\\frac{dv}{du}\\frac{du}{dx}=4\\cdot1=4"
       ],
       "tree": {
-        "label": "×  出力 12",
+        "label": "v = 4u",
         "children": [
           {
-            "label": "＋  途中 3",
+            "label": "u = x + 1",
             "children": [
               {
-                "label": "入力 2",
+                "label": "x = 2",
                 "children": []
               },
               {
-                "label": "定数 1",
+                "label": "1",
                 "children": []
               }
             ]
           },
           {
-            "label": "定数 4",
+            "label": "4",
             "children": []
           }
         ]
@@ -105,27 +107,28 @@
     },
     "6": {
       "latex": [
-        "\\frac{dy}{dy}=1,\\quad u=x+1",
-        "\\frac{dy}{du}=4,\\quad\\frac{dy}{dx}=4"
+        "x=2,\\quad u=x+1=3,\\quad v=4u=12",
+        "\\frac{dv}{dv}=1,\\qquad \\frac{dv}{du}=1\\cdot4=4",
+        "\\frac{dv}{dx}=\\frac{dv}{du}\\frac{du}{dx}=4\\cdot1=4"
       ],
       "tree": {
-        "label": "×  出力 12",
+        "label": "v = 4u",
         "children": [
           {
-            "label": "＋  途中 3",
+            "label": "u = x + 1",
             "children": [
               {
-                "label": "入力 2",
+                "label": "x = 2",
                 "children": []
               },
               {
-                "label": "定数 1",
+                "label": "1",
                 "children": []
               }
             ]
           },
           {
-            "label": "定数 4",
+            "label": "4",
             "children": []
           }
         ]
@@ -133,27 +136,30 @@
     },
     "7": {
       "latex": [
-        "y=3x+2x,\\quad y(3)=15",
-        "\\frac{dy}{dx}=3+2=5"
+        "x=3,\\quad a=3x,\\quad b=2x",
+        "y=a+b=9+6=15",
+        "\\frac{dy}{dx}=1\\cdot3+1\\cdot2=5"
       ],
       "tree": {
-        "label": "＋  合計 15",
+        "label": "y = a + b",
         "children": [
           {
-            "label": "×3 → 9",
+            "label": "a = 3x",
             "children": [
               {
-                "label": "共通入力 x = 3",
-                "children": []
+                "label": "x = 3",
+                "children": [],
+                "shared": "x"
               }
             ]
           },
           {
-            "label": "×2 → 6",
+            "label": "b = 2x",
             "children": [
               {
-                "label": "共通入力 x = 3",
-                "children": []
+                "label": "x = 3",
+                "children": [],
+                "shared": "x"
               }
             ]
           }
@@ -162,9 +168,9 @@
     },
     "8": {
       "latex": [
-        "\\alpha_{\\mathrm{book}}(A)=\\ln \\alpha(A)",
-        "\\alpha(R)=4\\alpha(A)\\alpha(B)+6",
-        "4\\cdot2\\cdot3+6=30"
+        "\\alpha(A)=2,\\quad\\alpha(B)=3",
+        "Z=\\alpha(R)=4\\alpha(A)\\alpha(B)+6=30",
+        "\\alpha_{\\rm book}(A)=\\ln\\alpha(A)"
       ],
       "tree": {
         "label": "Z (+)",
@@ -191,9 +197,9 @@
     },
     "9": {
       "latex": [
-        "\\beta_{\\mathrm{book}}(A)=\\ln \\beta(A)",
-        "\\beta(A)=1\\cdot4\\cdot3=12",
-        "P(A)=\\frac{12\\cdot2}{30}=0.8"
+        "\\beta(A)=\\frac{\\partial Z}{\\partial\\alpha(A)}=4\\alpha(B)=12",
+        "P(A)=\\frac{\\beta(A)\\alpha(A)}{Z}=\\frac{12\\cdot2}{30}",
+        "\\beta_{\\rm book}(A)=\\ln\\beta(A)"
       ],
       "tree": {
         "label": "Z (+)",
@@ -225,7 +231,7 @@
         "R\\longrightarrow A\\ B"
       ],
       "tree": {
-        "label": "親 R：一つの規則",
+        "label": "親 R：1つの規則",
         "children": [
           {
             "label": "子 A",
@@ -285,7 +291,7 @@
     },
     "4": {
       "latex": [
-        "Z=\\alpha(W(1,n))"
+        "n=\\lvert x\\rvert,\\quad Z=\\alpha(\\mathrm W(1,n))"
       ],
       "tree": {
         "label": "状態の凡例",
@@ -313,6 +319,7 @@
   "03": {
     "1": {
       "latex": [
+        "\\Delta\\alpha(A)=0.01,\\quad\\alpha(B)=3",
         "Z=4\\alpha(A)\\alpha(B)+6",
         "\\Delta Z=4\\cdot3\\cdot0.01=0.12"
       ],
@@ -419,7 +426,7 @@
         "w_A=2\\cdot5,\\quad w_B=3\\cdot7"
       ],
       "tree": {
-        "label": "＋  二つの道",
+        "label": "＋  2つの道",
         "children": [
           {
             "label": "A：2 × 5",
@@ -438,7 +445,7 @@
         "Z=2\\cdot5+3\\cdot7=31"
       ],
       "tree": {
-        "label": "＋  二つの道",
+        "label": "＋  2つの道",
         "children": [
           {
             "label": "Aまで 2 → ×5",
@@ -457,7 +464,7 @@
         "Z=2\\beta(A)+3\\beta(B)=31"
       ],
       "tree": {
-        "label": "＋  二つの道",
+        "label": "＋  2つの道",
         "children": [
           {
             "label": "Aから 5",
@@ -475,7 +482,7 @@
         "P(A)=\\frac{2\\cdot5}{31},\\quad P(B)=\\frac{3\\cdot7}{31}"
       ],
       "tree": {
-        "label": "＋  二つの道",
+        "label": "＋  2つの道",
         "children": [
           {
             "label": "A：10 / 31",
@@ -493,7 +500,7 @@
         "Z(x)=5x+21,\\quad\\frac{dZ}{dx}=5"
       ],
       "tree": {
-        "label": "＋  二つの道",
+        "label": "＋  2つの道",
         "children": [
           {
             "label": "A：x × 5",
@@ -509,10 +516,11 @@
     "6": {
       "latex": [
         "P(A)=\\frac{\\alpha(A)\\beta(A)}{Z}",
-        "\\alpha_r(R)=w_r\\alpha(A)\\alpha(B)"
+        "r:\\ R\\longrightarrow A\\ B",
+        "\\Delta\\alpha(R)=w_r\\alpha(A)\\alpha(B)"
       ],
       "tree": {
-        "label": "× 木の一規則",
+        "label": "× 木の1規則",
         "children": [
           {
             "label": "局所重み",
@@ -678,7 +686,8 @@
     },
     "6": {
       "latex": [
-        "N_q\\in\\{0,1\\}\\quad\\Longrightarrow\\quad E[N_q]=P(q)"
+        "N_q=\\#\\{\\text{occurrences of }q\\}",
+        "N_q\\in\\{0,1\\}\\Longrightarrow\\mathbb E[N_q]=P(q)"
       ],
       "tree": {
         "label": "印の個数",
@@ -779,8 +788,8 @@
     },
     "4": {
       "latex": [
-        "Z=3X+5X=16",
-        "\\beta(X)=3+5=8"
+        "X=2,\\quad Z=3X+5X=16",
+        "\\frac{dZ}{dX}=3+5=8"
       ],
       "tree": {
         "label": "Z (+) 16",
@@ -790,7 +799,8 @@
             "children": [
               {
                 "label": "共通 X = 2",
-                "children": []
+                "children": [],
+                "shared": "x"
               }
             ]
           },
@@ -799,7 +809,8 @@
             "children": [
               {
                 "label": "共通 X = 2",
-                "children": []
+                "children": [],
+                "shared": "x"
               }
             ]
           }
@@ -808,8 +819,8 @@
     },
     "5": {
       "latex": [
-        "Z=X^2=4,\\quad \\beta(X)=2+2",
-        "\\frac{\\beta(X)X}{Z}=2"
+        "X=2,\\quad Z=X^2=4",
+        "\\frac{dZ}{dX}=2X=4,\\quad\\frac{X}{Z}\\frac{dZ}{dX}=2"
       ],
       "tree": {
         "label": "×  合計 4",
@@ -918,7 +929,8 @@
     },
     "4": {
       "latex": [
-        "M_e=\\beta(R)w_e\\prod_i \\alpha(C_i)",
+        "e:\\ R\\longrightarrow C_1,\\ldots,C_k",
+        "M_e=\\beta(R)w_e\\prod_{i=1}^k\\alpha(C_i)",
         "P(p)=\\frac{1}{Z}\\sum_{e\\,\\mathrm{emits}\\,p}M_e"
       ],
       "tree": {
@@ -1118,7 +1130,8 @@
     },
     "5": {
       "latex": [
-        "\\alpha(R)=\\sum_{e}w_e\\prod_i \\alpha(C_i)"
+        "e:\\ R\\longrightarrow C_{e,1},\\ldots,C_{e,k_e}",
+        "\\alpha(R)=\\sum_{e}w_e\\prod_{i=1}^{k_e}\\alpha(C_{e,i})"
       ],
       "tree": {
         "label": "＋ 規則を選ぶ",
@@ -1173,8 +1186,9 @@
         "caption": "固定対 (1,5) を追加対 (3,6) が横切る。"
       },
       "latex": [
-        "i<k<j<l",
-        "1<3<5<6"
+        "(i,j)=(1,5)",
+        "(k,l)=(3,6)",
+        "i<k<j<l"
       ]
     },
     "2": {
@@ -1208,8 +1222,9 @@
         "caption": "左の２対は入れ子。右の (9,12) はどちらとも並ぶ。"
       },
       "latex": [
-        "a<c<s<q",
-        "q<k"
+        "(a,q)=(1,8)",
+        "(c,s)=(2,7)",
+        "1<2<7<8<9<12"
       ]
     },
     "3": {
@@ -1384,8 +1399,9 @@
         "caption": "青帯 [3,10] と [22,22] は、完成構造 R について弱閉。"
       },
       "latex": [
-        "(p,q)\\in R\\;\\Longrightarrow",
-        "(p\\in J\\iff q\\in J)"
+        "J=[3,10]\\ \\mathrm{or}\\ [22,22]",
+        "\\forall (p,q)\\in R:",
+        "p\\in J\\iff q\\in J"
       ]
     },
     "2": {
@@ -1470,6 +1486,7 @@
         "caption": "(2,23) と (11,21) の左の翼には閉じた枝がある。"
       },
       "latex": [
+        "(a,q)=(2,23),\\quad(c,s)=(11,21)",
         "a\\le c<s\\le q",
         "[a+1,c-1],\\ [s+1,q-1]"
       ]
@@ -1609,7 +1626,7 @@
             12
           ]
         ],
-        "headline": "同じ完成構造で BE の二つの境界だけを動かす",
+        "headline": "同じ完成構造で BE の2つの境界だけを動かす",
         "caption": "明るい青の２対が境界。暗い弧は同じ完成構造の残り。"
       },
       "latex": [
@@ -1689,7 +1706,7 @@
           ]
         ],
         "headline": "穴を通る紫の弧は、交差する別の枝に属する",
-        "caption": "BE の青い二本の腕を固定すると、残りの子が接続する。"
+        "caption": "BE の青い2本の腕を固定すると、残りの子が接続する。"
       },
       "latex": [
         "\\beta(b)=\\partial Z/\\partial\\alpha(b)"
@@ -1771,13 +1788,15 @@
       },
       "latex": [
         "[1,14]\\cap[6,17]=[6,14]",
+        "D_{\\rm BE}=[1,4]\\cup[11,14]",
         "D_{\\rm BE}\\cap D_{\\rm VP}=\\varnothing"
       ]
     },
     "7": {
       "latex": [
-        "Z=\\sum_T w(T)",
-        "Z_{B}=\\sum_{T\\ \\mathrm{retained}}w(T)"
+        "\\mathcal T_B\\subseteq\\mathcal T",
+        "Z=\\sum_{T\\in\\mathcal T}w(T)",
+        "Z_B=\\sum_{T\\in\\mathcal T_B}w(T)"
       ],
       "tree": {
         "label": "Z (+)",
@@ -1922,13 +1941,13 @@
             "#e3a8ff"
           ]
         ],
-        "headline": "50塩基の完成図から、最初の三つの子を取り出す",
+        "headline": "50塩基の完成図から、最初の3つの子を取り出す",
         "caption": "左の担当帯　青 BE　灰 WI　紫 VP。色のない位置は保留。"
       },
       "latex": [
+        "a=\\mathrm{WMBP}(1,23)",
         "b=\\mathrm{BE}(1,14;4,11)",
-        "u=\\mathrm{WI}(5,5)",
-        "v=\\mathrm{VP}(6,23)"
+        "u=\\mathrm{WI}(5,5),\\quad v=\\mathrm{VP}(6,23)"
       ]
     },
     "2": {
@@ -2052,7 +2071,7 @@
             32
           ]
         ],
-        "headline": "二番目の固定バンドが受け取る位置を照合する",
+        "headline": "2番目の固定バンドが受け取る位置を照合する",
         "caption": "16–19 は最初の VP の枠にも入る。次の BE に渡す。"
       },
       "latex": [
