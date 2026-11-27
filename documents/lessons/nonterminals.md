@@ -1,14 +1,16 @@
 # 15 種類の部分問題から構造を組み立てる
 
+本教材の $\alpha$（inside）と $\beta$（outside）は実数の重みで表す。教科書の擬似コードに出る対数表との換算は[教科書と記号の対応](textbook-guide.md#実数の重みと教科書の-log-表)に示す。
+
 RNA の配列と、必ず残す互いに交差しない塩基対の集合（足場）を固定する。構造は完成した対の集合であり、各位置の相手は高々一つである。状態を展開して一つの構造を得る手順を導出と呼ぶ。途中の選択肢をすべて残して計算する方式を exact と呼ぶ。基本の用語は[語彙ガイド](first-words.md)、モデルへの導入は[文法編](grammar.md)にある。
 
 ## 位置付きの規則を読む
 
 部分問題の種類を非終端記号、種類と具体的な座標の組を項目と呼ぶ。区間の両端 $i,j$ を含め、位置は 1 から数える。BE では外側の対 $(i,j)$ と内側の目印 $(u,v)$ の四つの座標を使う。$k,l,p,q$ は規則ごとに選んだ分割位置または足場から引いた位置であり、候補から一組を選ぶと親・子の値を参照する場所が決まる。
 
-親 $A$ が規則 $r$ と分割位置の組 $s$ を選ぶと、その場で掛ける局所重みを $w_{r,s}$、子の順序付き列を $C_{r,s}$ と書く。重みはエネルギー $E$ に対する $\exp[-E/(RT)]$ で、$T$ は絶対温度、$R$ は気体定数。以下の「子の積」の各項目名は、その項目で作れる全導出の重みの和 $I$（inside）を表す。したがって各行の子の積に $w_{r,s}$ を掛け、許された分割位置と規則について足すと親の値になる。
+親 $A$ が規則 $r$ と分割位置の組 $s$ を選ぶと、その場で掛ける局所重みを $w_{r,s}$、子の順序付き列を $C_{r,s}$ と書く。重みはエネルギー $E$ に対する $\exp[-E/(RT)]$ で、$T$ は絶対温度、$R$ は気体定数。以下の「子の積」の各項目名は、その項目で作れる全導出の重みの和 $\alpha$（inside）を表す。したがって各行の子の積に $w_{r,s}$ を掛け、許された分割位置と規則について足すと親の値になる。
 
-$$I(A)=\sum_{(r,s)\ \mathrm{admitted}} w_{r,s}\prod_{B\in C_{r,s}}I(B).$$
+$$\alpha(A)=\sum_{(r,s)\ \mathrm{admitted}} w_{r,s}\prod_{B\in C_{r,s}}\alpha(B).$$
 
 表中の 1 は空の積で、子のない規則も局所重みを掛ける。空にできる WI や左接頭辞を持つ規則では、その長さがゼロの場合の子を省く。各規則の座標は[実装の展開関数](../../src/scfg2/deductions/expand_basic.hh)、許される分割位置や足場の条件は[候補の生成関数](../../src/scfg2/deductions/generate_exact_basic.hh)に対応する。名前があることと正の重みで root（全体の項目）に寄与することを区別する。
 
@@ -26,10 +28,10 @@ $$I(A)=\sum_{(r,s)\ \mathrm{admitted}} w_{r,s}\prod_{B\in C_{r,s}}I(B).$$
 
 |規則|選んだ一回の展開に含まれる子の積|選択の意味|局所重み|
 |---|---|---|---|
-| `W_EXTEND_UNPAIRED` | $I(\mathrm{W}(i,j-1))$ | 右端の未対合一個を追加する。 | $1$ |
-| `W_SPLIT_V` | $I(\mathrm{W}(i,k-1))\,I(\mathrm{V}(k,j))$ | 外側の前半のあとに、右端 j で終わる通常の対で閉じた枝を加える。 | $X(k,j)$ |
-| `W_SPLIT_WMB` | $I(\mathrm{W}(i,k-1))\,I(\mathrm{WMB}(k,j))$ | 外側の前半のあとに、右端 j で終わる完成した擬似ノット部分を加える。 | $\mathrm{PS}$ |
-| `W_ROOT_WMB_DECOMPOSITION` | $I(\mathrm{W}(i,p-1))\,I(\mathrm{WMB}(p,k))\,I(\mathrm{W}(k+1,j))$ | 全体の先頭を含む項目で足場の目印から境界を引く補助分解。候補や子の値が残る条件を伴う。 | $\mathrm{PS}$ |
+| `W_EXTEND_UNPAIRED` | $\alpha(\mathrm{W}(i,j-1))$ | 右端の未対合一個を追加する。 | $1$ |
+| `W_SPLIT_V` | $\alpha(\mathrm{W}(i,k-1))\,\alpha(\mathrm{V}(k,j))$ | 外側の前半のあとに、右端 j で終わる通常の対で閉じた枝を加える。 | $X(k,j)$ |
+| `W_SPLIT_WMB` | $\alpha(\mathrm{W}(i,k-1))\,\alpha(\mathrm{WMB}(k,j))$ | 外側の前半のあとに、右端 j で終わる完成した擬似ノット部分を加える。 | $\mathrm{PS}$ |
+| `W_ROOT_WMB_DECOMPOSITION` | $\alpha(\mathrm{W}(i,p-1))\,\alpha(\mathrm{WMB}(p,k))\,\alpha(\mathrm{W}(k+1,j))$ | 全体の先頭を含む項目で足場の目印から境界を引く補助分解。候補や子の値が残る条件を伴う。 | $\mathrm{PS}$ |
 
 ## V が担当する部分
 
@@ -44,8 +46,8 @@ $$I(A)=\sum_{(r,s)\ \mathrm{admitted}} w_{r,s}\prod_{B\in C_{r,s}}I(B).$$
 |規則|選んだ一回の展開に含まれる子の積|選択の意味|局所重み|
 |---|---|---|---|
 | `V_HAIRPIN` | $1$ | 末端のヘアピンを閉じる。 | $H(i,j)$ |
-| `V_INTERNAL` | $I(\mathrm{V}(k,l))$ | 通常の内部ループ・スタックを選ぶ。 | $L(i,j;k,l)$ |
-| `V_VM` | $I(\mathrm{VM}(i,j))$ | 多分岐を閉じる経路へ渡す。 | $1$ |
+| `V_INTERNAL` | $\alpha(\mathrm{V}(k,l))$ | 通常の内部ループ・スタックを選ぶ。 | $L(i,j;k,l)$ |
+| `V_VM` | $\alpha(\mathrm{VM}(i,j))$ | 多分岐を閉じる経路へ渡す。 | $1$ |
 
 ## VM が担当する部分
 
@@ -59,9 +61,9 @@ $$I(A)=\sum_{(r,s)\ \mathrm{admitted}} w_{r,s}\prod_{B\in C_{r,s}}I(B).$$
 
 |規則|選んだ一回の展開に含まれる子の積|選択の意味|局所重み|
 |---|---|---|---|
-| `VM_SPLIT_WM_WMv` | $I(\mathrm{WM}(i+1,k-1))\,I(\mathrm{WMv}(k,j-1))$ | 前の枝列のあとに通常の最後の枝を置いて多分岐を閉じる。 | $M(i,j)$ |
-| `VM_SPLIT_WM_WMp` | $I(\mathrm{WM}(i+1,k-1))\,I(\mathrm{WMp}(k,j-1))$ | 前の枝列のあとに擬似ノットを含む最後の枝を置いて閉じる。 | $M(i,j)$ |
-| `VM_SPLIT_WMp_BASE` | $I(\mathrm{WMp}(k,j-1))$ | 左に通常の枝を置かず、単一の擬似ノット枝と左の未対合列を評価する。 | $c^{k-i-1}\,M(i,j)$ |
+| `VM_SPLIT_WM_WMv` | $\alpha(\mathrm{WM}(i+1,k-1))\,\alpha(\mathrm{WMv}(k,j-1))$ | 前の枝列のあとに通常の最後の枝を置いて多分岐を閉じる。 | $M(i,j)$ |
+| `VM_SPLIT_WM_WMp` | $\alpha(\mathrm{WM}(i+1,k-1))\,\alpha(\mathrm{WMp}(k,j-1))$ | 前の枝列のあとに擬似ノットを含む最後の枝を置いて閉じる。 | $M(i,j)$ |
+| `VM_SPLIT_WMp_BASE` | $\alpha(\mathrm{WMp}(k,j-1))$ | 左に通常の枝を置かず、単一の擬似ノット枝と左の未対合列を評価する。 | $c^{k-i-1}\,M(i,j)$ |
 | `VM_SCALE2` | `—` | 識別子だけが残る。exact の VM の選択肢に含めない。 | 適用なし |
 
 ## WMv が担当する部分
@@ -76,8 +78,8 @@ $$I(A)=\sum_{(r,s)\ \mathrm{admitted}} w_{r,s}\prod_{B\in C_{r,s}}I(B).$$
 
 |規則|選んだ一回の展開に含まれる子の積|選択の意味|局所重み|
 |---|---|---|---|
-| `WMv_STEM_V` | $I(\mathrm{V}(i,j))$ | この区間を単一の枝から作る。 | $S(i,j)$ |
-| `WMv_EXTEND_UNPAIRED` | $I(\mathrm{WMv}(i,j-1))$ | 右端の未対合一個を追加する。 | $c$ |
+| `WMv_STEM_V` | $\alpha(\mathrm{V}(i,j))$ | この区間を単一の枝から作る。 | $S(i,j)$ |
+| `WMv_EXTEND_UNPAIRED` | $\alpha(\mathrm{WMv}(i,j-1))$ | 右端の未対合一個を追加する。 | $c$ |
 
 ## WMp が担当する部分
 
@@ -91,8 +93,8 @@ $$I(A)=\sum_{(r,s)\ \mathrm{admitted}} w_{r,s}\prod_{B\in C_{r,s}}I(B).$$
 
 |規則|選んだ一回の展開に含まれる子の積|選択の意味|局所重み|
 |---|---|---|---|
-| `WMp_STEM_WMB` | $I(\mathrm{WMB}(i,j))$ | この区間を単一の枝から作る。 | $\mathrm{PSM}\,b$ |
-| `WMp_EXTEND_UNPAIRED` | $I(\mathrm{WMp}(i,j-1))$ | 右端の未対合一個を追加する。 | $c$ |
+| `WMp_STEM_WMB` | $\alpha(\mathrm{WMB}(i,j))$ | この区間を単一の枝から作る。 | $\mathrm{PSM}\,b$ |
+| `WMp_EXTEND_UNPAIRED` | $\alpha(\mathrm{WMp}(i,j-1))$ | 右端の未対合一個を追加する。 | $c$ |
 
 ## WM が担当する部分
 
@@ -106,11 +108,11 @@ $$I(A)=\sum_{(r,s)\ \mathrm{admitted}} w_{r,s}\prod_{B\in C_{r,s}}I(B).$$
 
 |規則|選んだ一回の展開に含まれる子の積|選択の意味|局所重み|
 |---|---|---|---|
-| `WM_START_V` | $I(\mathrm{V}(k,j))$ | 最初の枝と、その左の未対合列を引き受ける。 | $c^{k-i}\,S(k,j)$ |
-| `WM_START_WMB` | $I(\mathrm{WMB}(k,j))$ | 最初の枝と、その左の未対合列を引き受ける。 | $c^{k-i}\,\mathrm{PSM}\,b$ |
-| `WM_SPLIT_V` | $I(\mathrm{WM}(i,k-1))\,I(\mathrm{V}(k,j))$ | 多分岐内の先行する枝列のあとに、右端 j で終わる通常の対で閉じた枝を加える。 | $S(k,j)$ |
-| `WM_SPLIT_WMB` | $I(\mathrm{WM}(i,k-1))\,I(\mathrm{WMB}(k,j))$ | 多分岐内の先行する枝列のあとに、右端 j で終わる完成した擬似ノット部分を加える。 | $\mathrm{PSM}\,b$ |
-| `WM_EXTEND_UNPAIRED` | $I(\mathrm{WM}(i,j-1))$ | 右端の未対合一個を追加する。 | $c$ |
+| `WM_START_V` | $\alpha(\mathrm{V}(k,j))$ | 最初の枝と、その左の未対合列を引き受ける。 | $c^{k-i}\,S(k,j)$ |
+| `WM_START_WMB` | $\alpha(\mathrm{WMB}(k,j))$ | 最初の枝と、その左の未対合列を引き受ける。 | $c^{k-i}\,\mathrm{PSM}\,b$ |
+| `WM_SPLIT_V` | $\alpha(\mathrm{WM}(i,k-1))\,\alpha(\mathrm{V}(k,j))$ | 多分岐内の先行する枝列のあとに、右端 j で終わる通常の対で閉じた枝を加える。 | $S(k,j)$ |
+| `WM_SPLIT_WMB` | $\alpha(\mathrm{WM}(i,k-1))\,\alpha(\mathrm{WMB}(k,j))$ | 多分岐内の先行する枝列のあとに、右端 j で終わる完成した擬似ノット部分を加える。 | $\mathrm{PSM}\,b$ |
+| `WM_EXTEND_UNPAIRED` | $\alpha(\mathrm{WM}(i,j-1))$ | 右端の未対合一個を追加する。 | $c$ |
 
 ## WI が担当する部分
 
@@ -125,9 +127,9 @@ $$I(A)=\sum_{(r,s)\ \mathrm{admitted}} w_{r,s}\prod_{B\in C_{r,s}}I(B).$$
 |規則|選んだ一回の展開に含まれる子の積|選択の意味|局所重み|
 |---|---|---|---|
 | `WI_BASE_SINGLE` | $1$ | 隙間に一つだけある未対合を数える。 | $\mathrm{PUP}$ |
-| `WI_SPLIT_V` | $I(\mathrm{WI}(i,k-1))\,I(\mathrm{V}(k,j))$ | 交差領域の隙間の前半のあとに、右端 j で終わる通常の対で閉じた枝を加える。 | $\mathrm{PPS}$ |
-| `WI_SPLIT_WMB` | $I(\mathrm{WI}(i,k-1))\,I(\mathrm{WMB}(k,j))$ | 交差領域の隙間の前半のあとに、右端 j で終わる完成した擬似ノット部分を加える。 | $\mathrm{PSP}\,\mathrm{PPS}$ |
-| `WI_EXTEND_UNPAIRED` | $I(\mathrm{WI}(i,j-1))$ | 右端の未対合一個を追加する。 | $\mathrm{PUP}$ |
+| `WI_SPLIT_V` | $\alpha(\mathrm{WI}(i,k-1))\,\alpha(\mathrm{V}(k,j))$ | 交差領域の隙間の前半のあとに、右端 j で終わる通常の対で閉じた枝を加える。 | $\mathrm{PPS}$ |
+| `WI_SPLIT_WMB` | $\alpha(\mathrm{WI}(i,k-1))\,\alpha(\mathrm{WMB}(k,j))$ | 交差領域の隙間の前半のあとに、右端 j で終わる完成した擬似ノット部分を加える。 | $\mathrm{PSP}\,\mathrm{PPS}$ |
+| `WI_EXTEND_UNPAIRED` | $\alpha(\mathrm{WI}(i,j-1))$ | 右端の未対合一個を追加する。 | $\mathrm{PUP}$ |
 
 ## WIP が担当する部分
 
@@ -141,13 +143,13 @@ $$I(A)=\sum_{(r,s)\ \mathrm{admitted}} w_{r,s}\prod_{B\in C_{r,s}}I(B).$$
 
 |規則|選んだ一回の展開に含まれる子の積|選択の意味|局所重み|
 |---|---|---|---|
-| `WIP_BASE_V` | $I(\mathrm{V}(i,j))$ | この区間を単一の枝から作る。 | $\mathrm{bp}$ |
-| `WIP_BASE_WMB` | $I(\mathrm{WMB}(i,j))$ | この区間を単一の枝から作る。 | $\mathrm{bp}\,\mathrm{PSM}$ |
-| `WIP_SPLIT_V` | $I(\mathrm{WIP}(i,k-1))\,I(\mathrm{V}(k,j))$ | バンドをまたぐ多分岐の先行する腕のあとに、右端 j で終わる通常の対で閉じた枝を加える。 | $\mathrm{bp}$ |
-| `WIP_SPLIT_WMB` | $I(\mathrm{WIP}(i,k-1))\,I(\mathrm{WMB}(k,j))$ | バンドをまたぐ多分岐の先行する腕のあとに、右端 j で終わる完成した擬似ノット部分を加える。 | $\mathrm{bp}\,\mathrm{PSM}$ |
-| `WIP_BASEPAIR_V` | $I(\mathrm{V}(k,j))$ | 最初の枝と、その左の未対合列を引き受ける。 | $\mathrm{cp}^{k-i}\,\mathrm{bp}$ |
-| `WIP_BASEPAIR_WMB` | $I(\mathrm{WMB}(k,j))$ | 最初の枝と、その左の未対合列を引き受ける。 | $\mathrm{cp}^{k-i}\,\mathrm{bp}\,\mathrm{PSM}$ |
-| `WIP_EXTEND_UNPAIRED` | $I(\mathrm{WIP}(i,j-1))$ | 右端の未対合一個を追加する。 | $\mathrm{cp}$ |
+| `WIP_BASE_V` | $\alpha(\mathrm{V}(i,j))$ | この区間を単一の枝から作る。 | $\mathrm{bp}$ |
+| `WIP_BASE_WMB` | $\alpha(\mathrm{WMB}(i,j))$ | この区間を単一の枝から作る。 | $\mathrm{bp}\,\mathrm{PSM}$ |
+| `WIP_SPLIT_V` | $\alpha(\mathrm{WIP}(i,k-1))\,\alpha(\mathrm{V}(k,j))$ | バンドをまたぐ多分岐の先行する腕のあとに、右端 j で終わる通常の対で閉じた枝を加える。 | $\mathrm{bp}$ |
+| `WIP_SPLIT_WMB` | $\alpha(\mathrm{WIP}(i,k-1))\,\alpha(\mathrm{WMB}(k,j))$ | バンドをまたぐ多分岐の先行する腕のあとに、右端 j で終わる完成した擬似ノット部分を加える。 | $\mathrm{bp}\,\mathrm{PSM}$ |
+| `WIP_BASEPAIR_V` | $\alpha(\mathrm{V}(k,j))$ | 最初の枝と、その左の未対合列を引き受ける。 | $\mathrm{cp}^{k-i}\,\mathrm{bp}$ |
+| `WIP_BASEPAIR_WMB` | $\alpha(\mathrm{WMB}(k,j))$ | 最初の枝と、その左の未対合列を引き受ける。 | $\mathrm{cp}^{k-i}\,\mathrm{bp}\,\mathrm{PSM}$ |
+| `WIP_EXTEND_UNPAIRED` | $\alpha(\mathrm{WIP}(i,j-1))$ | 右端の未対合一個を追加する。 | $\mathrm{cp}$ |
 
 ## VPL が担当する部分
 
@@ -161,7 +163,7 @@ VP の左に未対合列を添える途中の状態。足場による境界と�
 
 |規則|選んだ一回の展開に含まれる子の積|選択の意味|局所重み|
 |---|---|---|---|
-| `VPL_SPLIT_VP` | $I(\mathrm{VP}(k,j))$ | 左側の未対合を局所重みで受け持つ。 | $\mathrm{cp}^{k-i}$ |
+| `VPL_SPLIT_VP` | $\alpha(\mathrm{VP}(k,j))$ | 左側の未対合を局所重みで受け持つ。 | $\mathrm{cp}^{k-i}$ |
 
 ## VPR が担当する部分
 
@@ -175,8 +177,8 @@ VP の右に腕をつなぐ途中の状態。右に枝があれば WIP を置く
 
 |規則|選んだ一回の展開に含まれる子の積|選択の意味|局所重み|
 |---|---|---|---|
-| `VPR_SPLIT_VP_WIP` | $I(\mathrm{VP}(i,k))\,I(\mathrm{WIP}(k+1,j))$ | 左の交差対を含む部分に、少なくとも一本の枝がある右腕を添える。 | $1$ |
-| `VPR_SPLIT_VP_BASEPAIR` | $I(\mathrm{VP}(i,k))$ | 右側 k+1～j を未対合列として親で数え、左の交差対だけを子にする。 | $\mathrm{cp}^{j-k}$ |
+| `VPR_SPLIT_VP_WIP` | $\alpha(\mathrm{VP}(i,k))\,\alpha(\mathrm{WIP}(k+1,j))$ | 左の交差対を含む部分に、少なくとも一本の枝がある右腕を添える。 | $1$ |
+| `VPR_SPLIT_VP_BASEPAIR` | $\alpha(\mathrm{VP}(i,k))$ | 右側 k+1～j を未対合列として親で数え、左の交差対だけを子にする。 | $\mathrm{cp}^{j-k}$ |
 
 ## VP が担当する部分
 
@@ -190,15 +192,15 @@ VP の右に腕をつなぐ途中の状態。右に枝があれば WIP を置く
 
 |規則|選んだ一回の展開に含まれる子の積|選択の意味|局所重み|
 |---|---|---|---|
-| `VP_WI_CASE1` | $I(\mathrm{WI}(i+1,p-1))\,I(\mathrm{WI}(q+1,j-1))$ | 左端側が足場の内側にある配置。足場の右腕を飛ばす。 | $1$ |
-| `VP_WI_CASE2` | $I(\mathrm{WI}(i+1,p-1))\,I(\mathrm{WI}(q+1,j-1))$ | 右端側が足場の内側にある配置。足場の左腕を飛ばす。 | $1$ |
-| `VP_WI_CASE3` | $I(\mathrm{WI}(i+1,p-1))\,I(\mathrm{WI}(q+1,k-1))\,I(\mathrm{WI}(l+1,j-1))$ | 両端側に足場があり、最大三つの隙間が残る。 | $1$ |
-| `VP_STACK` | $I(\mathrm{VP}(i+1,j-1))$ | 隣接した追加対へ進む。 | バンド内のスタック因子 |
-| `VP_INTERNAL_LOOP` | $I(\mathrm{VP}(k,l))$ | 適合する内側交差対を選び、左右の未対合を数える。 | バンド内の内部ループ因子 |
-| `VP_WIP_VP_LEFT` | $I(\mathrm{WIP}(i+1,k-1))\,I(\mathrm{VP}(k,j-1))$ | 左に枝を含む腕を置き、右の端が隣り合う内側交差対に進む。 | $\mathrm{ap}\,\mathrm{bp}^{2}$ |
-| `VP_VP_WIP_RIGHT` | $I(\mathrm{VP}(i+1,k))\,I(\mathrm{WIP}(k+1,j-1))$ | 左の端が隣り合う内側交差対と、枝を含む右腕を使う。 | $\mathrm{ap}\,\mathrm{bp}^{2}$ |
-| `VP_WIP_VPR` | $I(\mathrm{WIP}(i+1,k-1))\,I(\mathrm{VPR}(k,j-1))$ | 左の枝あり腕を先に分離し、交差対と右側の処理を VPR に任せる。 | $\mathrm{ap}\,\mathrm{bp}^{2}$ |
-| `VP_VPL_WIP` | $I(\mathrm{VPL}(i+1,k))\,I(\mathrm{WIP}(k+1,j-1))$ | 右の枝あり腕を分離し、左側の未対合列と交差対を VPL に任せる。 | $\mathrm{ap}\,\mathrm{bp}^{2}$ |
+| `VP_WI_CASE1` | $\alpha(\mathrm{WI}(i+1,p-1))\,\alpha(\mathrm{WI}(q+1,j-1))$ | 左端側が足場の内側にある配置。足場の右腕を飛ばす。 | $1$ |
+| `VP_WI_CASE2` | $\alpha(\mathrm{WI}(i+1,p-1))\,\alpha(\mathrm{WI}(q+1,j-1))$ | 右端側が足場の内側にある配置。足場の左腕を飛ばす。 | $1$ |
+| `VP_WI_CASE3` | $\alpha(\mathrm{WI}(i+1,p-1))\,\alpha(\mathrm{WI}(q+1,k-1))\,\alpha(\mathrm{WI}(l+1,j-1))$ | 両端側に足場があり、最大三つの隙間が残る。 | $1$ |
+| `VP_STACK` | $\alpha(\mathrm{VP}(i+1,j-1))$ | 隣接した追加対へ進む。 | バンド内のスタック因子 |
+| `VP_INTERNAL_LOOP` | $\alpha(\mathrm{VP}(k,l))$ | 適合する内側交差対を選び、左右の未対合を数える。 | バンド内の内部ループ因子 |
+| `VP_WIP_VP_LEFT` | $\alpha(\mathrm{WIP}(i+1,k-1))\,\alpha(\mathrm{VP}(k,j-1))$ | 左に枝を含む腕を置き、右の端が隣り合う内側交差対に進む。 | $\mathrm{ap}\,\mathrm{bp}^{2}$ |
+| `VP_VP_WIP_RIGHT` | $\alpha(\mathrm{VP}(i+1,k))\,\alpha(\mathrm{WIP}(k+1,j-1))$ | 左の端が隣り合う内側交差対と、枝を含む右腕を使う。 | $\mathrm{ap}\,\mathrm{bp}^{2}$ |
+| `VP_WIP_VPR` | $\alpha(\mathrm{WIP}(i+1,k-1))\,\alpha(\mathrm{VPR}(k,j-1))$ | 左の枝あり腕を先に分離し、交差対と右側の処理を VPR に任せる。 | $\mathrm{ap}\,\mathrm{bp}^{2}$ |
+| `VP_VPL_WIP` | $\alpha(\mathrm{VPL}(i+1,k))\,\alpha(\mathrm{WIP}(k+1,j-1))$ | 右の枝あり腕を分離し、左側の未対合列と交差対を VPL に任せる。 | $\mathrm{ap}\,\mathrm{bp}^{2}$ |
 
 ## BE が担当する部分
 
@@ -213,11 +215,11 @@ VP の右に腕をつなぐ途中の状態。右に枝があれば WIP を置く
 |規則|選んだ一回の展開に含まれる子の積|選択の意味|局所重み|
 |---|---|---|---|
 | `BE_BASE_SAMEPAIR` | $1$ | 外側の対と内側の対が一致。局所重み 1。 | $1$ |
-| `BE_STACK` | $I(\mathrm{BE}(i+1,j-1;u^{\prime},v^{\prime}))$ | 次の隣接した固定対へ進む。$(i,j)=(u,v)$ なら $(u^{\prime},v^{\prime})=(i+1,j-1)$、それ以外なら $(u^{\prime},v^{\prime})=(u,v)$。 | バンド内のスタック因子 |
-| `BE_INTERNAL_LOOP` | $I(\mathrm{BE}(k,l,u,v))$ | 次の固定対との間に内部ループを作る。 | バンド内の内部ループ因子 |
-| `BE_WIP_WIP` | $I(\mathrm{WIP}(i+1,k-1))\,I(\mathrm{BE}(k,l,u,v))\,I(\mathrm{WIP}(l+1,j-1))$ | 左右に枝を持つ。 | $\mathrm{ap}\,\mathrm{bp}^{2}$ |
-| `BE_WIP_BASEPAIR` | $I(\mathrm{WIP}(i+1,k-1))\,I(\mathrm{BE}(k,l,u,v))$ | 左に枝、右は未対合列。 | $\mathrm{cp}^{j-l-1}\,\mathrm{ap}\,\mathrm{bp}^{2}$ |
-| `BE_BASEPAIR_WIP` | $I(\mathrm{BE}(k,l,u,v))\,I(\mathrm{WIP}(l+1,j-1))$ | 左は未対合列、右に枝。 | $\mathrm{cp}^{k-i-1}\,\mathrm{ap}\,\mathrm{bp}^{2}$ |
+| `BE_STACK` | $\alpha(\mathrm{BE}(i+1,j-1;u^{\prime},v^{\prime}))$ | 次の隣接した固定対へ進む。$(i,j)=(u,v)$ なら $(u^{\prime},v^{\prime})=(i+1,j-1)$、それ以外なら $(u^{\prime},v^{\prime})=(u,v)$。 | バンド内のスタック因子 |
+| `BE_INTERNAL_LOOP` | $\alpha(\mathrm{BE}(k,l,u,v))$ | 次の固定対との間に内部ループを作る。 | バンド内の内部ループ因子 |
+| `BE_WIP_WIP` | $\alpha(\mathrm{WIP}(i+1,k-1))\,\alpha(\mathrm{BE}(k,l,u,v))\,\alpha(\mathrm{WIP}(l+1,j-1))$ | 左右に枝を持つ。 | $\mathrm{ap}\,\mathrm{bp}^{2}$ |
+| `BE_WIP_BASEPAIR` | $\alpha(\mathrm{WIP}(i+1,k-1))\,\alpha(\mathrm{BE}(k,l,u,v))$ | 左に枝、右は未対合列。 | $\mathrm{cp}^{j-l-1}\,\mathrm{ap}\,\mathrm{bp}^{2}$ |
+| `BE_BASEPAIR_WIP` | $\alpha(\mathrm{BE}(k,l,u,v))\,\alpha(\mathrm{WIP}(l+1,j-1))$ | 左は未対合列、右に枝。 | $\mathrm{cp}^{k-i-1}\,\mathrm{ap}\,\mathrm{bp}^{2}$ |
 
 ## WMBP が担当する部分
 
@@ -233,7 +235,7 @@ VP の右に腕をつなぐ途中の状態。右に枝があれば WIP を置く
 |---|---|---|---|
 | `WMBP_SPLIT_BE_WMBP_VP` | `BE(p,q;l,m(l))` × `WMBP(i,k-1)` × `VP(k,j)` | 前の鎖と新しい VP が隙間を置かずにつながる。 | $\mathrm{PB}^{2}$ |
 | `WMBP_SPLIT_BE_WMBW_VP` | `BE(p,q;l,m(l))` × `WMBW(i,k-1)` × `VP(k,j)` | 先に隙間を埋めた WMBW を経由してつなぐ。 | $\mathrm{PB}^{2}$ |
-| `WMBP_DIRECT_VP` | $I(\mathrm{VP}(i,j))$ | 一つの交差部分から鎖を開始する。 | $\mathrm{PB}$ |
+| `WMBP_DIRECT_VP` | $\alpha(\mathrm{VP}(i,j))$ | 一つの交差部分から鎖を開始する。 | $\mathrm{PB}$ |
 | `WMBP_SPLIT_BE_WI_VP` | `BE(i,m(i);k,l)` × `WI(k+1,p-1)` × `VP(p,j)` | 最初の固定バンドと新しい VP を結ぶ。BE の表示座標には下記の解決処理を適用する。 | $\mathrm{PB}^{2}$ |
 
 ## WMBW が担当する部分
@@ -248,7 +250,7 @@ VP の右に腕をつなぐ途中の状態。右に枝があれば WIP を置く
 
 |規則|選んだ一回の展開に含まれる子の積|選択の意味|局所重み|
 |---|---|---|---|
-| `WMBW_SPLIT_WMBP_WI` | $I(\mathrm{WMBP}(i,k))\,I(\mathrm{WI}(k+1,j))$ | 部分鎖の右に非空の隙間を付ける。 | $1$ |
+| `WMBW_SPLIT_WMBP_WI` | $\alpha(\mathrm{WMBP}(i,k))\,\alpha(\mathrm{WI}(k+1,j))$ | 部分鎖の右に非空の隙間を付ける。 | $1$ |
 
 ## WMB が担当する部分
 
@@ -262,8 +264,8 @@ VP の右に腕をつなぐ途中の状態。右に枝があれば WIP を置く
 
 |規則|選んだ一回の展開に含まれる子の積|選択の意味|局所重み|
 |---|---|---|---|
-| `WMB_SPLIT_BE_WMBP_WI` | $I(\mathrm{BE}(p,j,q,l))\,I(\mathrm{WMBP}(i,k))\,I(\mathrm{WI}(k+1,l-1))$ | 最終の固定バンド・隙間を引き受けて鎖を閉じる。 | $\mathrm{PB}$ |
-| `WMB_DIRECT_WMBP` | $I(\mathrm{WMBP}(i,j))$ | 完成可能な鎖を同じ座標で受け取る。 | $1$ |
+| `WMB_SPLIT_BE_WMBP_WI` | $\alpha(\mathrm{BE}(p,j,q,l))\,\alpha(\mathrm{WMBP}(i,k))\,\alpha(\mathrm{WI}(k+1,l-1))$ | 最終の固定バンド・隙間を引き受けて鎖を閉じる。 | $\mathrm{PB}$ |
+| `WMB_DIRECT_WMBP` | $\alpha(\mathrm{WMBP}(i,j))$ | 完成可能な鎖を同じ座標で受け取る。 | $1$ |
 | `WMB_EMPTY` | $1$ | 候補の局所重みは 0。空の完成鎖を作らない。 | $0$ |
 
 ## 境界と重みの読み取り
