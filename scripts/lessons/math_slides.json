@@ -1,0 +1,1317 @@
+{
+  "00": {
+    "1": {
+      "latex": [
+        "f(x)=x^2",
+        "f(2)=4,\\quad f(3)=9"
+      ],
+      "tree": {
+        "label": "計算図：× 二乗",
+        "children": [
+          {
+            "label": "同じ入力 x",
+            "children": []
+          },
+          {
+            "label": "同じ入力 x",
+            "children": []
+          }
+        ]
+      }
+    },
+    "2": {
+      "latex": [
+        "\\frac{2.1^2-2^2}{2.1-2}=\\frac{0.41}{0.1}=4.1"
+      ],
+      "tree": {
+        "label": "÷  比 4.1",
+        "children": [
+          {
+            "label": "出力差 0.41",
+            "children": []
+          },
+          {
+            "label": "入力差 0.1",
+            "children": []
+          }
+        ]
+      }
+    },
+    "3": {
+      "latex": [
+        "\\frac{(2+h)^2-4}{h}=4+h",
+        "\\lim_{h\\to0}(4+h)=4"
+      ],
+      "tree": {
+        "label": "変化率 4",
+        "children": [
+          {
+            "label": "幅 0.1：4.1",
+            "children": []
+          },
+          {
+            "label": "幅 0.01：4.01",
+            "children": []
+          }
+        ]
+      }
+    },
+    "4": {
+      "latex": [
+        "\\frac{d}{dx}x^2=2x",
+        "z=xy,\\quad\\frac{\\partial z}{\\partial x}=y"
+      ],
+      "tree": {
+        "label": "×   z",
+        "children": [
+          {
+            "label": "動かす x",
+            "children": []
+          },
+          {
+            "label": "固定 y = 5",
+            "children": []
+          }
+        ]
+      }
+    },
+    "5": {
+      "latex": [
+        "y=4(x+1),\\quad y(2)=12",
+        "\\frac{dy}{dx}=4\\cdot1=4"
+      ],
+      "tree": {
+        "label": "×  出力 12",
+        "children": [
+          {
+            "label": "＋  途中 3",
+            "children": [
+              {
+                "label": "入力 2",
+                "children": []
+              },
+              {
+                "label": "定数 1",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "定数 4",
+            "children": []
+          }
+        ]
+      }
+    },
+    "6": {
+      "latex": [
+        "\\frac{dy}{dy}=1,\\quad u=x+1",
+        "\\frac{dy}{du}=4,\\quad\\frac{dy}{dx}=4"
+      ],
+      "tree": {
+        "label": "×  出力 12",
+        "children": [
+          {
+            "label": "＋  途中 3",
+            "children": [
+              {
+                "label": "入力 2",
+                "children": []
+              },
+              {
+                "label": "定数 1",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "定数 4",
+            "children": []
+          }
+        ]
+      }
+    },
+    "7": {
+      "latex": [
+        "y=3x+2x,\\quad y(3)=15",
+        "\\frac{dy}{dx}=3+2=5"
+      ],
+      "tree": {
+        "label": "＋  合計 15",
+        "children": [
+          {
+            "label": "×3 → 9",
+            "children": [
+              {
+                "label": "共通入力 x = 3",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "×2 → 6",
+            "children": [
+              {
+                "label": "共通入力 x = 3",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "8": {
+      "latex": [
+        "I(R)=4I(A)I(B)+6",
+        "4\\cdot2\\cdot3+6=30"
+      ],
+      "tree": {
+        "label": "Z (+)",
+        "children": [
+          {
+            "label": "× 4",
+            "children": [
+              {
+                "label": "A = 2",
+                "children": []
+              },
+              {
+                "label": "B = 3",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "6",
+            "children": []
+          }
+        ]
+      }
+    },
+    "9": {
+      "latex": [
+        "O(A)=1\\cdot4\\cdot3=12",
+        "P(A)=\\frac{12\\cdot2}{30}=0.8"
+      ],
+      "tree": {
+        "label": "Z (+)",
+        "children": [
+          {
+            "label": "× 4",
+            "children": [
+              {
+                "label": "□ A",
+                "children": []
+              },
+              {
+                "label": "B = 3",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "6",
+            "children": []
+          }
+        ]
+      }
+    }
+  },
+  "02": {
+    "1": {
+      "latex": [
+        "R\\longrightarrow A\\ B"
+      ],
+      "tree": {
+        "label": "親 R：一つの規則",
+        "children": [
+          {
+            "label": "子 A",
+            "children": []
+          },
+          {
+            "label": "子 B",
+            "children": []
+          }
+        ]
+      }
+    },
+    "2": {
+      "latex": [
+        "4I(A)I(B)=4\\cdot2\\cdot3=24"
+      ],
+      "tree": {
+        "label": "× 4",
+        "children": [
+          {
+            "label": "A = 2",
+            "children": []
+          },
+          {
+            "label": "B = 3",
+            "children": []
+          }
+        ]
+      }
+    },
+    "3": {
+      "latex": [
+        "I(R)=4I(A)I(B)+6=30"
+      ],
+      "tree": {
+        "label": "Z (+)",
+        "children": [
+          {
+            "label": "× 4",
+            "children": [
+              {
+                "label": "A = 2",
+                "children": []
+              },
+              {
+                "label": "B = 3",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "6",
+            "children": []
+          }
+        ]
+      }
+    },
+    "4": {
+      "latex": [
+        "Z=I(W(1,n))"
+      ],
+      "tree": {
+        "label": "状態の凡例",
+        "children": [
+          {
+            "label": "W：一般",
+            "children": []
+          },
+          {
+            "label": "V：通常対",
+            "children": []
+          },
+          {
+            "label": "VP：交差対",
+            "children": []
+          },
+          {
+            "label": "WMB：完成",
+            "children": []
+          }
+        ]
+      }
+    }
+  },
+  "03": {
+    "1": {
+      "latex": [
+        "Z=4I(A)I(B)+6",
+        "\\Delta Z=4\\cdot3\\cdot0.01=0.12"
+      ],
+      "tree": {
+        "label": "Z (+)",
+        "children": [
+          {
+            "label": "× 4",
+            "children": [
+              {
+                "label": "□ A",
+                "children": []
+              },
+              {
+                "label": "B = 3",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "6",
+            "children": []
+          }
+        ]
+      }
+    },
+    "2": {
+      "latex": [
+        "O(A)=1\\cdot4\\cdot3=12",
+        "O(B)=1\\cdot4\\cdot2=8"
+      ],
+      "tree": {
+        "label": "Z (+)",
+        "children": [
+          {
+            "label": "× 4",
+            "children": [
+              {
+                "label": "□ A",
+                "children": []
+              },
+              {
+                "label": "B = 3",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "6",
+            "children": []
+          }
+        ]
+      }
+    },
+    "3": {
+      "latex": [
+        "\\frac{O(A)I(A)}{Z}=\\frac{12\\cdot2}{30}=0.8"
+      ],
+      "tree": {
+        "label": "Z (+)",
+        "children": [
+          {
+            "label": "× 4",
+            "children": [
+              {
+                "label": "A = 2",
+                "children": []
+              },
+              {
+                "label": "B = 3",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "6",
+            "children": []
+          }
+        ]
+      }
+    },
+    "4": {
+      "latex": [
+        "Z=x^2,\\quad\\frac{dZ}{dx}=x+x"
+      ],
+      "tree": {
+        "label": "×  同じ値を使う",
+        "children": [
+          {
+            "label": "左の x",
+            "children": []
+          },
+          {
+            "label": "右の x",
+            "children": []
+          }
+        ]
+      }
+    }
+  },
+  "06": {
+    "1": {
+      "latex": [
+        "w_A=2\\cdot5,\\quad w_B=3\\cdot7"
+      ],
+      "tree": {
+        "label": "＋  二つの道",
+        "children": [
+          {
+            "label": "A：2 × 5",
+            "children": []
+          },
+          {
+            "label": "B：3 × 7",
+            "children": []
+          }
+        ]
+      }
+    },
+    "2": {
+      "latex": [
+        "\\alpha(A)=2,\\quad\\alpha(B)=3",
+        "Z=2\\cdot5+3\\cdot7=31"
+      ],
+      "tree": {
+        "label": "＋  二つの道",
+        "children": [
+          {
+            "label": "Aまで 2 → ×5",
+            "children": []
+          },
+          {
+            "label": "Bまで 3 → ×7",
+            "children": []
+          }
+        ]
+      }
+    },
+    "3": {
+      "latex": [
+        "\\beta(A)=5,\\quad\\beta(B)=7",
+        "Z=2\\beta(A)+3\\beta(B)=31"
+      ],
+      "tree": {
+        "label": "＋  二つの道",
+        "children": [
+          {
+            "label": "Aから 5",
+            "children": []
+          },
+          {
+            "label": "Bから 7",
+            "children": []
+          }
+        ]
+      }
+    },
+    "4": {
+      "latex": [
+        "P(A)=\\frac{2\\cdot5}{31},\\quad P(B)=\\frac{3\\cdot7}{31}"
+      ],
+      "tree": {
+        "label": "＋  二つの道",
+        "children": [
+          {
+            "label": "A：10 / 31",
+            "children": []
+          },
+          {
+            "label": "B：21 / 31",
+            "children": []
+          }
+        ]
+      }
+    },
+    "5": {
+      "latex": [
+        "Z(x)=5x+21,\\quad\\frac{dZ}{dx}=5"
+      ],
+      "tree": {
+        "label": "＋  二つの道",
+        "children": [
+          {
+            "label": "A：x × 5",
+            "children": []
+          },
+          {
+            "label": "B：21",
+            "children": []
+          }
+        ]
+      }
+    },
+    "6": {
+      "latex": [
+        "P(A)=\\frac{\\alpha(A)\\beta(A)}{Z}",
+        "I_r(R)=w_rI(A)I(B)"
+      ],
+      "tree": {
+        "label": "× 木の一規則",
+        "children": [
+          {
+            "label": "局所重み",
+            "children": []
+          },
+          {
+            "label": "左の子",
+            "children": []
+          },
+          {
+            "label": "右の子",
+            "children": []
+          }
+        ]
+      }
+    }
+  },
+  "07": {
+    "1": {
+      "latex": [
+        "I(A)=1+1=2,\\quad I(B)=1+2=3"
+      ],
+      "tree": {
+        "label": "× 4",
+        "children": [
+          {
+            "label": "A：＋",
+            "children": [
+              {
+                "label": "a1：1",
+                "children": []
+              },
+              {
+                "label": "a2：1",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "B：＋",
+            "children": [
+              {
+                "label": "b1：1",
+                "children": []
+              },
+              {
+                "label": "b2：2",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "2": {
+      "latex": [
+        "4(1+1)(1+2)=4+8+4+8"
+      ],
+      "tree": {
+        "label": "× 4",
+        "children": [
+          {
+            "label": "A：＋",
+            "children": [
+              {
+                "label": "a1：1",
+                "children": []
+              },
+              {
+                "label": "a2：1",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "B：＋",
+            "children": [
+              {
+                "label": "b1：1",
+                "children": []
+              },
+              {
+                "label": "b2：2",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "3": {
+      "latex": [
+        "Z=(4+8+4+8)+6=30"
+      ],
+      "tree": {
+        "label": "Z (+)",
+        "children": [
+          {
+            "label": "× 4",
+            "children": [
+              {
+                "label": "A = 2",
+                "children": []
+              },
+              {
+                "label": "B = 3",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "6",
+            "children": []
+          }
+        ]
+      }
+    },
+    "4": {
+      "latex": [
+        "P(q)=\\frac{8+8}{30}=\\frac{16}{30}"
+      ],
+      "tree": {
+        "label": "× 4",
+        "children": [
+          {
+            "label": "A：1＋1",
+            "children": []
+          },
+          {
+            "label": "印つき b2：2",
+            "children": []
+          }
+        ]
+      }
+    },
+    "5": {
+      "latex": [
+        "O(B)=1\\cdot4\\cdot2=8",
+        "O(B)\\cdot2=16"
+      ],
+      "tree": {
+        "label": "Z (+)",
+        "children": [
+          {
+            "label": "× 4",
+            "children": [
+              {
+                "label": "A = 2",
+                "children": []
+              },
+              {
+                "label": "□ B",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "6",
+            "children": []
+          }
+        ]
+      }
+    },
+    "6": {
+      "latex": [
+        "N_q\\in\\{0,1\\}\\quad\\Longrightarrow\\quad E[N_q]=P(q)"
+      ],
+      "tree": {
+        "label": "印の個数",
+        "children": [
+          {
+            "label": "印なし：0",
+            "children": []
+          },
+          {
+            "label": "b2 の印：1",
+            "children": []
+          }
+        ]
+      }
+    }
+  },
+  "08": {
+    "1": {
+      "latex": [
+        "Z=1+2\\cdot3\\cdot5=31"
+      ],
+      "tree": {
+        "label": "Z (+)",
+        "children": [
+          {
+            "label": "× 2",
+            "children": [
+              {
+                "label": "A = 3",
+                "children": []
+              },
+              {
+                "label": "B = 5",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "1",
+            "children": []
+          }
+        ]
+      }
+    },
+    "2": {
+      "latex": [
+        "\\frac{32-31}{3.1-3}=2\\cdot5=10"
+      ],
+      "tree": {
+        "label": "Z (+)",
+        "children": [
+          {
+            "label": "× 2",
+            "children": [
+              {
+                "label": "□ A",
+                "children": []
+              },
+              {
+                "label": "B = 5",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "1",
+            "children": []
+          }
+        ]
+      }
+    },
+    "3": {
+      "latex": [
+        "P(A)=\\frac{O(A)I(A)}{Z}=\\frac{10\\cdot3}{31}"
+      ],
+      "tree": {
+        "label": "Z (+)",
+        "children": [
+          {
+            "label": "× 2",
+            "children": [
+              {
+                "label": "A = 3",
+                "children": []
+              },
+              {
+                "label": "B = 5",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "1",
+            "children": []
+          }
+        ]
+      }
+    },
+    "4": {
+      "latex": [
+        "Z=3X+5X=16",
+        "O(X)=3+5=8"
+      ],
+      "tree": {
+        "label": "Z (+) 16",
+        "children": [
+          {
+            "label": "×3 → 6",
+            "children": [
+              {
+                "label": "共通 X = 2",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "×5 → 10",
+            "children": [
+              {
+                "label": "共通 X = 2",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "5": {
+      "latex": [
+        "Z=X^2=4,\\quad O(X)=2+2",
+        "\\frac{O(X)X}{Z}=2"
+      ],
+      "tree": {
+        "label": "×  合計 4",
+        "children": [
+          {
+            "label": "左の X = 2",
+            "children": []
+          },
+          {
+            "label": "右の X = 2",
+            "children": []
+          }
+        ]
+      }
+    },
+    "6": {
+      "latex": [
+        "Z=1+5X,\\quad X=0",
+        "\\frac{dZ}{dX}=5"
+      ],
+      "tree": {
+        "label": "Z (+) 1",
+        "children": [
+          {
+            "label": "1",
+            "children": []
+          },
+          {
+            "label": "× 5",
+            "children": [
+              {
+                "label": "X = 0",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "09": {
+    "1": {
+      "latex": [
+        "P(p)=\\frac{30}{1+30}"
+      ],
+      "tree": {
+        "label": "Z (+) 31",
+        "children": [
+          {
+            "label": "対なし：1",
+            "children": []
+          },
+          {
+            "label": "対あり：30",
+            "children": []
+          }
+        ]
+      }
+    },
+    "2": {
+      "latex": [
+        "Z(t)=1+30t,\\quad Z(1)=31",
+        "Z'(t)=30"
+      ],
+      "tree": {
+        "label": "Z (+)",
+        "children": [
+          {
+            "label": "対なし：1",
+            "children": []
+          },
+          {
+            "label": "×",
+            "children": [
+              {
+                "label": "重み 30",
+                "children": []
+              },
+              {
+                "label": "印 t",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "3": {
+      "latex": [
+        "\\frac{\\partial\\log Z}{\\partial\\log t}=\\frac{t}{Z}\\frac{\\partial Z}{\\partial t}",
+        "\\frac{1}{31}\\cdot30=\\frac{30}{31}"
+      ],
+      "tree": {
+        "label": "×  対数の変化率",
+        "children": [
+          {
+            "label": "t / Z",
+            "children": []
+          },
+          {
+            "label": "Z の t 微分",
+            "children": []
+          }
+        ]
+      }
+    },
+    "4": {
+      "latex": [
+        "M_e=O(R)w_e\\prod_i I(C_i)",
+        "P(p)=\\frac{1}{Z}\\sum_{e\\,\\mathrm{emits}\\,p}M_e"
+      ],
+      "tree": {
+        "label": "× 規則 e の重み合計",
+        "children": [
+          {
+            "label": "親の外側",
+            "children": []
+          },
+          {
+            "label": "局所重み",
+            "children": []
+          },
+          {
+            "label": "子の内側の積",
+            "children": []
+          }
+        ]
+      }
+    },
+    "5": {
+      "latex": [
+        "\\log O(A)=\\log 10",
+        "\\frac{\\partial\\log Z}{\\partial\\log I(A)}=\\frac{30}{31}"
+      ],
+      "tree": {
+        "label": "Z (+)",
+        "children": [
+          {
+            "label": "× 2",
+            "children": [
+              {
+                "label": "□ A",
+                "children": []
+              },
+              {
+                "label": "B = 5",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "1",
+            "children": []
+          }
+        ]
+      }
+    },
+    "6": {
+      "latex": [
+        "p\\in G,\\quad Z>0\\quad\\Longrightarrow\\quad P(p\\mid G)=Z/Z=1"
+      ],
+      "tree": {
+        "label": "全候補に固定対",
+        "children": [
+          {
+            "label": "候補 1：対あり",
+            "children": []
+          },
+          {
+            "label": "候補 2：対あり",
+            "children": []
+          }
+        ]
+      }
+    }
+  },
+  "13": {
+    "1": {
+      "latex": [
+        "Z=9+1+2=12"
+      ],
+      "tree": {
+        "label": "＋ 全候補",
+        "children": [
+          {
+            "label": "a：9",
+            "children": []
+          },
+          {
+            "label": "b：1",
+            "children": []
+          },
+          {
+            "label": "c：2",
+            "children": []
+          }
+        ]
+      }
+    },
+    "2": {
+      "latex": [
+        "Z_{ac}=9+2=11",
+        "P_{ac}(c)=\\frac{2}{11}"
+      ],
+      "tree": {
+        "label": "＋ 残した候補",
+        "children": [
+          {
+            "label": "a：9",
+            "children": []
+          },
+          {
+            "label": "c：2",
+            "children": []
+          }
+        ]
+      }
+    },
+    "3": {
+      "latex": [
+        "y=\\max(x,2)",
+        "y'(1)=0,\\quad y'(3)=1"
+      ],
+      "tree": {
+        "label": "大きい値を選ぶ",
+        "children": [
+          {
+            "label": "x",
+            "children": []
+          },
+          {
+            "label": "定数 2",
+            "children": []
+          }
+        ]
+      }
+    },
+    "4": {
+      "latex": [
+        "P(p\\mid G)=1\\quad(p\\in G)"
+      ],
+      "tree": {
+        "label": "足場 G を固定",
+        "children": [
+          {
+            "label": "固定対を保持",
+            "children": []
+          },
+          {
+            "label": "許される対を追加",
+            "children": []
+          }
+        ]
+      }
+    },
+    "5": {
+      "latex": [
+        "I(R)=\\sum_{e}w_e\\prod_i I(C_i)"
+      ],
+      "tree": {
+        "label": "＋ 規則を選ぶ",
+        "children": [
+          {
+            "label": "× 規則 e",
+            "children": [
+              {
+                "label": "局所重み",
+                "children": []
+              },
+              {
+                "label": "子の内側",
+                "children": []
+              }
+            ]
+          },
+          {
+            "label": "他の規則",
+            "children": []
+          }
+        ]
+      }
+    }
+  },
+  "01": {
+    "1": {
+      "latex": [
+        "i<k<j<l",
+        "1<3<5<6"
+      ],
+      "tree": {
+        "label": "S",
+        "children": [
+          {
+            "label": "(1,5)",
+            "children": []
+          },
+          {
+            "label": "(3,6)",
+            "children": []
+          }
+        ]
+      }
+    },
+    "2": {
+      "latex": [
+        "S=G\\cup P",
+        "G\\subseteq S"
+      ],
+      "tree": {
+        "label": "S",
+        "children": [
+          {
+            "label": "G",
+            "children": []
+          },
+          {
+            "label": "P",
+            "children": []
+          }
+        ]
+      }
+    },
+    "3": {
+      "latex": [
+        "w=e^{-E/(RT)},\\quad Z=2+3=5",
+        "(p_1,p_2)=(2/5,3/5)"
+      ],
+      "tree": {
+        "label": "Z (+)",
+        "children": [
+          {
+            "label": "2",
+            "children": []
+          },
+          {
+            "label": "3",
+            "children": []
+          }
+        ]
+      }
+    }
+  },
+  "04": {
+    "1": {
+      "latex": [
+        "\\mathrm{BE}(1,14;4,11)",
+        "[1,4]\\cup[11,14]"
+      ],
+      "tree": {
+        "label": "WMBP",
+        "children": [
+          {
+            "label": "BE",
+            "children": []
+          },
+          {
+            "label": "WI",
+            "children": []
+          },
+          {
+            "label": "VP",
+            "children": []
+          }
+        ]
+      }
+    },
+    "2": {
+      "latex": [
+        "O(b)=\\partial Z/\\partial I(b)",
+        "b=\\mathrm{BE}(1,14;4,11)"
+      ],
+      "tree": {
+        "label": "× w",
+        "children": [
+          {
+            "label": "□ b",
+            "children": []
+          },
+          {
+            "label": "WI",
+            "children": []
+          },
+          {
+            "label": "VP",
+            "children": []
+          }
+        ]
+      }
+    },
+    "3": {
+      "latex": [
+        "w(T)=w_r\\prod_c w(T_c)"
+      ],
+      "tree": {
+        "label": "× wᵣ",
+        "children": [
+          {
+            "label": "BE",
+            "children": []
+          },
+          {
+            "label": "WI",
+            "children": []
+          },
+          {
+            "label": "VP",
+            "children": []
+          }
+        ]
+      }
+    },
+    "4": {
+      "latex": [
+        "Z=\\sum_T w(T)",
+        "Z_{B}=\\sum_{T\\ \\mathrm{retained}}w(T)"
+      ],
+      "tree": {
+        "label": "Z (+)",
+        "children": [
+          {
+            "label": "T₁",
+            "children": []
+          },
+          {
+            "label": "T₂",
+            "children": []
+          },
+          {
+            "label": "…",
+            "children": []
+          }
+        ]
+      }
+    }
+  },
+  "05": {
+    "1": {
+      "latex": [
+        "b=\\mathrm{BE}(1,14;4,11)",
+        "u=\\mathrm{WI}(5,5),\\quad v=\\mathrm{VP}(6,23)"
+      ],
+      "tree": {
+        "label": "WMBP(1,23)",
+        "children": [
+          {
+            "label": "b",
+            "children": []
+          },
+          {
+            "label": "u",
+            "children": []
+          },
+          {
+            "label": "v",
+            "children": []
+          }
+        ]
+      }
+    },
+    "2": {
+      "latex": [
+        "b:\\ [1,4]\\cup[11,14]",
+        "b_{\\rm next}:\\ [16,19]\\cup[32,35]"
+      ],
+      "tree": {
+        "label": "WMBP(1,44)",
+        "children": [
+          {
+            "label": "b next",
+            "children": []
+          },
+          {
+            "label": "WMBW",
+            "children": []
+          },
+          {
+            "label": "VP",
+            "children": []
+          }
+        ]
+      }
+    },
+    "3": {
+      "latex": [
+        "\\Delta I(a)=wI(b)I(u)I(v)",
+        "\\Delta O(b)=O(a)wI(u)I(v)"
+      ],
+      "tree": {
+        "label": "× w",
+        "children": [
+          {
+            "label": "□ b",
+            "children": []
+          },
+          {
+            "label": "u",
+            "children": []
+          },
+          {
+            "label": "v",
+            "children": []
+          }
+        ]
+      }
+    }
+  }
+}

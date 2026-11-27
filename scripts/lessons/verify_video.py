@@ -1,4 +1,5 @@
 """Check the complete encoded tracks against the script and synthesis timings."""
+import argparse
 import hashlib
 import json
 from pathlib import Path
@@ -6,8 +7,12 @@ from pathlib import Path
 import av
 
 root = Path(__file__).resolve().parents[2]
-output = root / "build/lessons"
-chapters = json.loads((root / "documents/lessons/video.json").read_text())
+parser=argparse.ArgumentParser()
+parser.add_argument("--script",type=Path,default=root/"documents/lessons/video.json")
+parser.add_argument("--output",type=Path,default=root/"build/lessons")
+args=parser.parse_args()
+output=args.output
+chapters=json.loads(args.script.read_text())
 results = []
 for chapter in chapters:
     name = "chapter-" + chapter["id"]

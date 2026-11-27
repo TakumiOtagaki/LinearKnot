@@ -24,6 +24,7 @@ import wave
 
 from PIL import Image, ImageDraw, ImageFont
 import imageio_ffmpeg
+from typeset import math_panel
 
 ROOT = Path(__file__).resolve().parents[2]
 FONT = os.environ.get("LESSON_FONT", str(Path.home()/".fonts/bizud/BIZUDGothic-Regular.ttf"))
@@ -224,6 +225,8 @@ def frame(chapter, idx, slide, subtitle, path):
             x = 77+k*260
             d.rectangle((x,463,x+24,486),fill=color)
             label(x+34,459,tag or "未担当",21)
+    if slide.get("latex") or slide.get("tree"):
+        math_panel(canvas, slide, lambda size: ImageFont.truetype(FONT, size))
     d.rectangle((0, 513, 1280, 678), fill="#20343c")
     font = ImageFont.truetype(FONT, 30)
     rows = wrapped(d, subtitle, font, 1160)
@@ -292,9 +295,15 @@ if __name__ == "__main__":
     parser.add_argument("--script", type=Path, default=ROOT/"documents/lessons/video.json")
     parser.add_argument("--output", type=Path, default=ROOT/"build/lessons")
     parser.add_argument("--chapter")
+    parser.add_argument("--visuals", type=Path, default=None)
+    parser.add_argument("--speech-cache",type=Path)
     args = parser.parse_args()
-    cache = args.output/"speech-cache"
+    args.output.mkdir(parents=True,exist_ok=True)
+    cache = args.speech_cache or args.output/"speech-cache"
     cache.mkdir(parents=True, exist_ok=True)
+    visuals = json.loads(args.visuals.read_text()) if args.visuals else {}
     for chapter in json.loads(args.script.read_text()):
+        for i, slide in enumerate(chapter["slides"], 1):
+            slide.update(visuals.get(chapter["id"], {}).get(str(i), {}))
         if not args.chapter or chapter["id"] == args.chapter:
             render(chapter,args.output,cache)

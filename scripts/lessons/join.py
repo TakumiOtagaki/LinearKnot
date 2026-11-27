@@ -2,6 +2,7 @@
 from fractions import Fraction
 from pathlib import Path
 import json
+import argparse
 import subprocess
 import tempfile
 import wave
@@ -112,6 +113,12 @@ def build(folder, chapters):
 
 
 if __name__ == "__main__":
-    plan = json.loads((ROOT / "documents/lessons/video.json").read_text())
+    parser=argparse.ArgumentParser()
+    parser.add_argument("--script",type=Path, default=ROOT/"documents/lessons/video.json")
+    parser.add_argument("--output",type=Path, default=OUT)
+    parser.add_argument("--exclude",nargs="*",default=[])
+    args=parser.parse_args()
+    OUT=args.output
+    plan=[c for c in json.loads(args.script.read_text()) if c["id"] not in args.exclude]
     with tempfile.TemporaryDirectory(dir=OUT) as work:
         build(Path(work), plan)
