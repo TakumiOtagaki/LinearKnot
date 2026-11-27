@@ -9,6 +9,7 @@ the seven CLI commands, and example figures.
 | Native CLI installation with pip or uv | [Python installation](../python/README.md) |
 | Exact and beam C++ interfaces | [C++ API](../src/scfg2/api/README.md) |
 | Scaffold, model, and decoding objectives | [Model](model.md) |
+| Japanese tutorial on the grammar, inside/outside, and discontinuous BE states | [日本語教材](lessons/README.md) |
 | Version changes | [Release notes](release_notes.md) |
 | PseudoLoop definition change in 0.2.0 and validation | [Loop contexts](pseudoloop_context_change.md) |
 | Time, space, and output-dependent costs | [Complexity](complexity.md) |
