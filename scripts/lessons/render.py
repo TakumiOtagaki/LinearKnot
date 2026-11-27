@@ -86,6 +86,43 @@ def frame(chapter, idx, slide, subtitle, path):
     if y > 510:
         raise ValueError("Slide content overlaps subtitles: " + slide["title"])
     # These diagrams illustrate the coordinates explicitly named on the slide.
+    if chapter["id"] == "00" and idx in (0,1,2):
+        # The local secant near x=2 approaches the tangent to y=x².
+        origin = (125, 475)
+        def graphpos(x):
+            return (origin[0]+165*x, origin[1]-13*x*x)
+        d.line((125,475,672,475),fill="#8da6ad",width=2)
+        d.line((125,475,125,324),fill="#8da6ad",width=2)
+        points = [graphpos(k/40) for k in range(128)]
+        d.line(points,fill="#8ee4af",width=4)
+        if idx in (1, 2):
+            slope = 4.1 if idx == 1 else 4
+            endpoints = [(origin[0]+165*x, origin[1]-13*(4+slope*(x-2))) for x in (1.15,3.1)]
+            d.line(endpoints, fill="#efa66a", width=3)
+            label(728, 455, "比で測る傾き 4.1" if idx==1 else "一点での傾き 4",23,"#ffc178")
+        for x in ((2,3) if idx==0 else (2,)):
+            px,py=graphpos(x)
+            d.ellipse((px-6,py-6,px+6,py+6),fill="#ffc178")
+            label(px+10,py-20,f"({x}, {x*x})",21,"#ffc178")
+        label(732,365,"横軸　入力の数",26)
+        label(732,417,"縦軸　二乗した出力",26)
+    if chapter["id"] == "00" and idx in (4,5):
+        tags = ["入力 2","1 を足す","4 を掛ける","出力 12"]
+        for k,tag in enumerate(tags):
+            x=78+296*k
+            d.rounded_rectangle((x,358,x+221,422),radius=12,fill="#29414a")
+            label(x+23,374,tag,27)
+            if k<3:
+                label(x+236,370,"→" if idx==4 else "←",32,"#8ee4af")
+        label(84,456,"値を作る順番　　左から右" if idx==4 else "変化率を戻す順番　　右から左",25,"#8ee4af")
+    if chapter["id"] == "00" and idx==6:
+        points=[(207,414),(583,357),(583,468),(985,414)]
+        for j,k in [(0,1),(0,2),(1,3),(2,3)]:
+            x,y0=points[j];x2,y2=points[k]
+            d.line((x+81,y0,x2-82,y2),fill="#8ee4af",width=4)
+        for (x,y0),tag in zip(points,["中間 3","上 9","下 6","合計 15"]):
+            d.rounded_rectangle((x-82,y0-24,x+82,y0+25),8,fill="#29414a")
+            label(x-62,y0-17,tag,26)
     if chapter["id"] == "01" and idx == 0:
         xs = [234 + 156 * k for k in range(6)]
         d.line((xs[0], 453, xs[-1], 453), fill="#718c91", width=3)

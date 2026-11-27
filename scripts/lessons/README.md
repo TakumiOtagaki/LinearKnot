@@ -10,6 +10,9 @@ export LESSON_FONT=/path/to/BIZUDGothic-Regular.ttf
 export LESSON_FONT_BOLD=/path/to/BIZUDGothic-Bold.ttf
 python scripts/lessons/render.py
 python scripts/lessons/verify_video.py
+python scripts/lessons/join.py
 ```
 
 結果は `build/lessons/` に出ます。一章だけを更新するには、例えば `render.py --chapter 11` を使います。台詞ごとの合成音声を再利用するので、別のエンジンや音声設定を試すときは `render.py --output build/lessons-new` のように出力先を替えます。配布済みの MP4 と SRT は [media フォルダー](../../documents/lessons/media/) にあります。
+
+結合版は `build/lessons/complete.mp4`、通しの日本語字幕は `complete.srt` です。結合では各章の音声サンプル数と映像フレーム数から境界を計算し、章選択の目印と字幕時刻に同じ境界を使います。
