@@ -22,3 +22,6 @@ __pycache__/
 /release-draft.local.md
 /release-preparation.local.md
 .DS_Store
+
+# Local OAuth credential for lesson publishing
+/linearknot-youtube-authorization.json
