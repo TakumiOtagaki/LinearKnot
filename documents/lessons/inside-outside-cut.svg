@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="340" viewBox="0 0 840 340" role="img" aria-labelledby="title desc">
+<title id="title">根の同じ結合で inside を作り、左の子を切って outside を求める</title>
+<desc id="desc">左は二つの規則を足す計算図。結合の重み4とAの内側2、Bの内側3を掛けた24に、終了規則の6を足して30を得る。右はAを使う規則だけを選んでAを切断した木。根の外側1、結合の4、兄弟Bの内側3を掛けてAの外側12になる。</desc>
+<defs><marker id="up" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#247569"/></marker><marker id="down" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#a24a1d"/></marker></defs>
+<rect width="840" height="340" rx="14" fill="#f7faf7"/>
+<g font-family="sans-serif" text-anchor="middle" fill="#20312f">
+<g font-weight="bold" font-size="21"><text x="209" y="37">子から根へ　内側の重み</text><text x="628" y="37">根から左の子へ　外側の重み</text></g>
+<g fill="none" stroke="#247569" stroke-width="3" marker-end="url(#up)"><path d="M95 216 L140 172"/><path d="M213 216 L162 172"/><path d="M164 131 L203 99"/><path d="M310 131 L238 99"/></g>
+<g fill="none" stroke="#a24a1d" stroke-width="3"><path d="M630 100 L630 131" marker-end="url(#down)"/><path d="M615 174 L558 215" stroke-dasharray="5 4" marker-end="url(#down)"/><path d="M646 174 L708 215"/></g>
+<g fill="#e0efe9" stroke="#247569"><rect x="155" y="61" width="128" height="38" rx="9"/><rect x="79" y="133" width="143" height="40" rx="9"/><rect x="267" y="133" width="104" height="40" rx="9"/><rect x="39" y="218" width="111" height="38" rx="9"/><rect x="160" y="218" width="116" height="38" rx="9"/></g>
+<g fill="#fcf0e4" stroke="#a24a1d"><rect x="557" y="61" width="145" height="39" rx="9"/><rect x="564" y="133" width="131" height="40" rx="9"/><rect x="466" y="218" width="141" height="38" rx="9" stroke-dasharray="5 3"/><rect x="649" y="218" width="158" height="38" rx="9"/></g>
+<g font-size="17"><text x="219" y="87">＋ 根 R = 30</text><text x="151" y="159">× 4　結合</text><text x="319" y="159">終了　6</text><text x="95" y="243">左 A = 2</text><text x="218" y="243">右 B = 3</text>
+<text x="630" y="87">根の外側　1</text><text x="630" y="159">結合　4</text><text x="536" y="243">切断　A □</text><text x="728" y="243">兄弟 B = 3</text></g>
+<g font-size="19"><text x="210" y="306">4 × 2 × 3 ＋ 6 = 30</text><text x="630" y="306">1 × 4 × 3 = 12</text></g></g>
+</svg>

@@ -1,6 +1,6 @@
 # LinearKnot の分配関数を読む
 
-**[基礎編から通して見る（全14章・日本語字幕付き MP4）](media/complete.mp4)** ｜ [通しの字幕](media/complete.srt) ｜ [基礎編だけ見る](media/chapter-00.mp4)
+**[inside・outside を基礎から通して見る（日本語字幕付き MP4）](media/complete.mp4)** ｜ [通しの字幕](media/complete.srt) ｜ [基礎編だけ見る](media/chapter-00.mp4)
 
 GitHub のファイル画面で「View raw」またはダウンロードを選ぶと動画を開けます。章選択に対応するプレーヤーでは目次から途中の章へ移動できます。
 
@@ -12,6 +12,10 @@ GitHub のファイル画面で「View raw」またはダウンロードを選�
 1. [文法編](grammar.md)では、固定する対を決めてから、どの部分を同時に組み合わせ、どの選択肢の間で和を取るかを追います。
 2. [inside と outside 編](inside-outside.md)では、重みの総和を実際に微分し、部分構造が使われる平均回数と塩基対確率を求めます。
 3. 下の例では、その微分を、二本の腕と中央の穴を持つ本物の文法規則に当てはめます。[動画の読み原稿](transcript.md)も章ごとに読めます。
+
+[非終端記号編](nonterminals.md)には、15種類の状態を座標例・規則・子の積で定義し、擬似ノットを組み立てる練習問題と解答を載せています。[非終端記号編の読み原稿](nonterminals-transcript.md)もあります。
+
+**[導出木の図譜（16例）](derivations/README.md)** では、座標と規則名を拡大して読める図と、親が選ぶ規則・子の座標を対応づけた表を用意しました。固定対を横切る対の左右に何があるかで変わる VP の9例を見比べられます。
 
 ## 動画を読む・聴く
 
@@ -25,7 +29,7 @@ GitHub のファイル画面で「View raw」またはダウンロードを選�
 | 03 | [外側は逆向きの微分](media/chapter-03.mp4) | 1:32 | [SRT](media/chapter-03.srt) |
 | 04 | [歯抜けの区間でも計算できる理由](media/chapter-04.mp4) | 1:42 | [SRT](media/chapter-04.srt) |
 | 05 | [実例でたどる、三つの子を持つ規則](media/chapter-05.mp4) | 1:09 | [SRT](media/chapter-05.srt) |
-| 06 | [道をたどって前向きと後ろ向きを試す](media/chapter-06.mp4) | 3:56 | [SRT](media/chapter-06.srt) |
+| 06 | [path をたどって forward・backward を試す](media/chapter-06.mp4) | 3:56 | [SRT](media/chapter-06.srt) |
 | 07 | [一つの規則の確率を全列挙で検算する](media/chapter-07.mp4) | 4:03 | [SRT](media/chapter-07.srt) |
 | 08 | [紙と鉛筆で追う逆向きの微分](media/chapter-08.mp4) | 2:32 | [SRT](media/chapter-08.srt) |
 | 09 | [塩基対に印をつけて確率を取り出す](media/chapter-09.mp4) | 2:49 | [SRT](media/chapter-09.srt) |
