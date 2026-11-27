@@ -116,6 +116,10 @@ $$\alpha(A)=\sum_{(r,s)\ \mathrm{admitted}} w_{r,s}\prod_{B\in C_{r,s}}\alpha(B)
 
 ## WI が担当する部分
 
+![塩基対と配列上の位置](derivations/wi_same_branch-structure.png)
+
+紫の枝 (4,10) の左右にある未対合の端を読む。
+
 **座標例。** 20 塩基例の WI(9,10) は WI(9,9) と右側の未対合10番に分かれる。この経路では2塩基分の費用を払う。
 
 ![WI の座標例の親子関係](derivations/state-WI.svg)
@@ -182,6 +186,10 @@ VP の右に腕をつなぐ途中の状態。右に枝があれば WIP を置く
 
 ## VP が担当する部分
 
+![塩基対と配列上の位置](derivations/vp_BB-structure.png)
+
+内側の紫の対 (8,16) と外側の紫の対 (2,22) の間で、左右に一つずつ閉じた枝が入る。
+
 **座標例。** 50 塩基例の VP(8,21) は WI(9,10)、WI(15,15)、WI(20,20) を同時に使う。
 
 ![VP の座標例の親子関係](derivations/state-VP.svg)
@@ -204,6 +212,10 @@ VP の右に腕をつなぐ途中の状態。右に枝があれば WIP を置く
 
 ## BE が担当する部分
 
+![塩基対と配列上の位置](derivations/band_wip-structure.png)
+
+左の青い枝 (4,10) は一方の腕にすべて収まる。上側の固定対 (2,23) と (11,21) はどちらも下側の追加対と交差する。
+
 **座標例。** 32 塩基例の BE(2,23;11,21) は WIP(3,10) と BE(11,21;11,21) を使い、右の22番を局所的に数える。
 
 ![BE の座標例の親子関係](derivations/state-BE.svg)
@@ -222,6 +234,10 @@ VP の右に腕をつなぐ途中の状態。右に枝があれば WIP を置く
 | `BE_BASEPAIR_WIP` | $\alpha(\mathrm{BE}(k,l,u,v))\,\alpha(\mathrm{WIP}(l+1,j-1))$ | 左は未対合列、右に枝。 | $\mathrm{cp}^{k-i-1}\,\mathrm{ap}\,\mathrm{bp}^{2}$ |
 
 ## WMBP が担当する部分
+
+![塩基対と配列上の位置](derivations/chain50-structure.png)
+
+途中の鎖で保留した固定バンドの端を配列に戻して読む。
 
 **座標例。** 50 塩基例の WMBP(1,44) は BE(16,35;19,32)、WMBW(1,26)、VP(27,44) を結ぶ。
 

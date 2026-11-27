@@ -1,11 +1,15 @@
 # LinearKnot の分配関数を読む
 
-**[inside・outside を基礎から通して見る（30分07秒、日本語字幕付き MP4）](media/complete.mp4)** ｜ [通しの字幕](media/complete.srt) ｜ [基礎編だけ見る](media/chapter-00.mp4)
+[教科書の章・図・記号と教材の対応表](textbook-guide.md)では、20塩基の弧図と $\alpha$・$\beta$ の定義から読み始められます。
+
+YouTube で見る　[① inside・outside の基礎](https://youtu.be/bOZ1EknCoTM) ／ [② 弧から読む非終端記号](https://youtu.be/oLHCHhOmJyU) ／ [③ 擬似ノット文法の演習](https://youtu.be/RvrE2oCo-8U)
+
+**[inside・outside を基礎から通して見る（32分32秒、日本語字幕付き MP4）](media/complete.mp4)** ｜ [通しの字幕](media/complete.srt) ｜ [基礎編だけ見る](media/chapter-00.mp4)
 
 | 続けて見る講義 | 時間 | 字幕・テキスト |
 |---|---:|---|
-| [非終端記号編　15種類の状態を木で読む](media/nonterminals.mp4) | 7分24秒 | [字幕](media/nonterminals.srt)・[原稿](nonterminals-transcript.md)・[全57規則の数式](nonterminals.md) |
-| [擬似ノット演習編　腕の配置から規則を選ぶ](media/pk-workshop.mp4) | 11分04秒 | [字幕](media/pk-workshop.srt)・[数式つき原稿](pk-workshop-transcript.md)・[導出木の図譜](derivations/README.md) |
+| [非終端記号編　塩基対の弧と木から15種類の状態を読む](media/nonterminals.mp4) | 10分56秒 | [字幕](media/nonterminals.srt)・[原稿](nonterminals-transcript.md)・[全57規則の数式](nonterminals.md) |
+| [擬似ノット演習編　腕の配置から規則を選ぶ](media/pk-workshop.mp4) | 11分20秒 | [字幕](media/pk-workshop.srt)・[数式つき原稿](pk-workshop-transcript.md)・[導出木の図譜](derivations/README.md) |
 
 GitHub のファイル画面で「View raw」またはダウンロードを選ぶと動画を開けます。章選択に対応するプレーヤーでは目次から途中の章へ移動できます。
 
@@ -28,15 +32,15 @@ GitHub のファイル画面で「View raw」またはダウンロードを選�
 
 | 章 | 動画 | 時間 | 字幕 |
 |---|---|---:|---|
-| 00 | [基礎編　関数と微分から inside・outside へ](media/chapter-00.mp4) | 6:26 | [SRT](media/chapter-00.srt) |
-| 01 | [構造を数える](media/chapter-01.mp4) | 1:09 | [SRT](media/chapter-01.srt) |
+| 00 | [基礎編　関数と微分から inside・outside へ](media/chapter-00.mp4) | 7:00 | [SRT](media/chapter-00.srt) |
+| 01 | [構造を数える](media/chapter-01.mp4) | 1:36 | [SRT](media/chapter-01.srt) |
 | 02 | [内側から分配関数を作る](media/chapter-02.mp4) | 1:19 | [SRT](media/chapter-02.srt) |
 | 03 | [外側は逆向きの微分](media/chapter-03.mp4) | 1:32 | [SRT](media/chapter-03.srt) |
-| 04 | [歯抜けの区間でも計算できる理由](media/chapter-04.mp4) | 1:42 | [SRT](media/chapter-04.srt) |
+| 04 | [歯抜けの区間でも計算できる理由](media/chapter-04.mp4) | 3:07 | [SRT](media/chapter-04.srt) |
 | 05 | [実例でたどる、三つの子を持つ規則](media/chapter-05.mp4) | 1:09 | [SRT](media/chapter-05.srt) |
 | 06 | [path をたどって forward・backward を試す](media/chapter-06.mp4) | 3:56 | [SRT](media/chapter-06.srt) |
 | 07 | [一つの規則の確率を全列挙で検算する](media/chapter-07.mp4) | 4:03 | [SRT](media/chapter-07.srt) |
-| 08 | [紙と鉛筆で追う逆向きの微分](media/chapter-08.mp4) | 2:32 | [SRT](media/chapter-08.srt) |
+| 08 | [紙と鉛筆で追う逆向きの微分](media/chapter-08.mp4) | 2:34 | [SRT](media/chapter-08.srt) |
 | 09 | [塩基対に印をつけて確率を取り出す](media/chapter-09.mp4) | 2:49 | [SRT](media/chapter-09.srt) |
 | 10 | [通常の枝を組み立てる](media/chapter-10.mp4) | 3:53 | [SRT](media/chapter-10.srt) |
 | 11 | [五十塩基の鎖を完成させる](media/chapter-11.mp4) | 3:53 | [SRT](media/chapter-11.srt) |
@@ -73,9 +77,9 @@ VP の左端             |    ↑             |             → 右端は23
 
 図は結合を最後まで進めたときの担当です。一つの列を縦に見ると色のついた行は一つだけです。例えば 15 番と 20 番はどちらも VP(6,23) の部分木に入り、その間の 16～19 番は別の BE に入ります。
 
-各状態の内側の重みの和を I、結合の重みを w と書きます。この一行が親に足す値は w × I(BE) × I(WI) × I(VP) です。全体の分配関数を Z とすると、親の値を少し変えたときに Z が変わる倍率を O(WMBP) と書けます。BE の値を少し変えると、まず親が w × I(WI) × I(VP) 倍だけ応答し、その応答がさらに O(WMBP) 倍されて Z に届きます。これが、この一行から O(BE) に加える量です。腕の座標が二つに分かれていても、掛けた数とそれを使った場所は明確です。
+各状態の内側の重みの和を α、結合の重みを w と書きます。この一行が親に足す値は w × α(BE) × α(WI) × α(VP) です。全体の分配関数を Z とすると、親の値を少し変えたときに Z が変わる倍率を β(WMBP) と書けます。BE の値を少し変えると、まず親が w × α(WI) × α(VP) 倍だけ応答し、その応答がさらに β(WMBP) 倍されて Z に届きます。これが、この一行から β(BE) に加える量です。腕の座標が二つに分かれていても、掛けた数とそれを使った場所は明確です。
 
-**手計算**　仮に I(BE)=3、I(WI)=1、I(VP)=5、w=2、O(WMBP)=7 と置くと、順方向で親に足す値は 30、逆方向で BE に足す値は 70 です。BE の値だけを 0.01 増やせば、この経路を通る Z の変化は 0.7。これらは演算を追うための仮の数値です。座標と親子関係は教科書の保存例に基づきます。
+**手計算**　仮に α(BE)=3、α(WI)=1、α(VP)=5、w=2、β(WMBP)=7 と置くと、順方向で親に足す値は 30、逆方向で BE に足す値は 70 です。BE の値だけを 0.01 増やせば、この経路を通る Z の変化は 0.7。これらは演算を追うための仮の数値です。座標と親子関係は教科書の保存例に基づきます。
 
 元資料は同じ作業環境の `../LinearCPartyPaper/textbook/chapters/04_pk_block.tex` の 50 塩基の例です。実装の境界条件は[文法規則の解説](../../src/scfg2/deductions/README.md)で確認できます。
 
@@ -94,3 +98,5 @@ VP の左端             |    ↑             |             → 右端は23
 4. 全候補では 3/5、前者だけ残した場合は 3/3 = 1。残した規則を固定して逆向きに計算すれば、その規則集合で求めた分配関数の微分になる。候補の順位が変わって後者が復活する効果は、この計算の外にある。
 
 字幕は校正した原稿から作り、発音は VOICEVOX の読みと日本語 Whisper-small による音声の文字起こしで点検しました。初回の照合で「値」「百分の一」「一本鎖」「左腕」「一行」などを含む9発話に読みを指定し、冒頭5章の全36発話を確認しました。「塩基」を「演技」と書き起こすような音声認識側の誤変換もあるため、字幕には原稿の専門用語と表記を用いています。
+
+弧図版では、旧版から音声が変わった32発話を Whisper small と合成時の音素列で再確認し、「弱閉区間」「塩基対」「値」などの読みを修正しました。

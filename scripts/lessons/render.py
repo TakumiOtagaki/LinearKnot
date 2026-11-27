@@ -25,6 +25,8 @@ import wave
 from PIL import Image, ImageDraw, ImageFont
 import imageio_ffmpeg
 from typeset import math_panel
+from structure_arcs import structure_panel
+from base_arcs import base_arc_panel
 
 ROOT = Path(__file__).resolve().parents[2]
 FONT = os.environ.get("LESSON_FONT", str(Path.home()/".fonts/bizud/BIZUDGothic-Regular.ttf"))
@@ -225,7 +227,11 @@ def frame(chapter, idx, slide, subtitle, path):
             x = 77+k*260
             d.rectangle((x,463,x+24,486),fill=color)
             label(x+34,459,tag or "未担当",21)
-    if slide.get("latex") or slide.get("tree"):
+    if slide.get("arc"):
+        structure_panel(canvas, slide, lambda size: ImageFont.truetype(FONT, size), subtitle)
+    elif slide.get("base_arc"):
+        base_arc_panel(canvas, slide, lambda size: ImageFont.truetype(FONT, size))
+    elif slide.get("latex") or slide.get("tree"):
         math_panel(canvas, slide, lambda size: ImageFont.truetype(FONT, size))
     d.rectangle((0, 513, 1280, 678), fill="#20343c")
     font = ImageFont.truetype(FONT, 30)
