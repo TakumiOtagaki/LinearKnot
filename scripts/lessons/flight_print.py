@@ -110,6 +110,7 @@ if __name__=='__main__':
     panels=appendix()
     assert len(PdfReader(guide).pages)==12 and len(PdfReader(panels).pages)==60
     shutil.copy2(guide,PUBLIC/guide.name)
+    combine(PUBLIC/"forward-backward-p6.pdf", [("4本の矢印と経路の重み", guide, 6, 6)])
     flight=PUBLIC/'flight-72.pdf'
     combine(flight,[('Outside と backprop',guide,1,12),('動画① 全60画面',panels,1,60)])
     impose(flight,PUBLIC/'flight-72-booklet-A4.pdf')
