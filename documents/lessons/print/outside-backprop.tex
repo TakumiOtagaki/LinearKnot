@@ -77,11 +77,12 @@ $A$ を選んだ位置で部分木を外す。残った文脈には、根で選�
 \[
 \beta(A)=\frac{\partial Z}{\partial\alpha(A)}=12.
 \]
-一般に全体の根から $\beta(r)=1$ で始め、各規則 $e$ について親から子 $c_i$ の各出現に返す：
+一般に $\beta(q)$ を「根 $r$ の導出木から項目 $q$ の部分木を1か所外した文脈」の重みの総和と定義する。根に穴を置く文脈は空で重み1。その他の穴には直上の親 $p$、規則 $e$、子の位置 $i$ が一意にある。親までの文脈を選び、規則を適用し、穴以外の子に部分木を選ぶので
 \[
-\beta(c_i)\mathrel{+}=\beta(p)\,w_e\prod_{j\ne i}\alpha(c_j).
+\beta(q)=\mathbf{1}_{q=r}+\sum_p\sum_{e:\,p\leftarrow C_e}
+\sum_{i:\,c_i=q}\beta(p)\,w_e\prod_{j\ne i}\alpha(c_j).
 \]
-親の倍率、規則の重み、他の子の重みを掛ける。この式は紙面4の積を $i$ 番目の入力で微分した式そのものである。親を先に逆走査すれば、その親に届いたすべての文脈が次の子に渡る。
+$\mathbf{1}_{q=r}$ は根なら1、他は0。同じ $q$ が左右にあれば内側の和に2項が立つ。紙面8でこの和を微分からも導く。
 \task{$A$ を0.01増やしたとき、$Z$ の変化は？}\ans{$12\times0.01=0.12$。}
 \unit{16:34}{4本の矢印で forward と backward を読む}
 $s$（start）は出発点、$t$ は到着点。$A,B$ は途中でどちらか一方を通る中継点である。矢印は進める向き、その横の数はその1歩を選んだときに掛ける\textbf{重み}。ここでは計算用に次の4個を与える。
@@ -108,17 +109,25 @@ $s$（start）は出発点、$t$ は到着点。$A,B$ は途中でどちらか�
 \]
 分母 $\sum_U w(U)=Z(1)>0$ はどの $T$ にも共通なので、分子の各項を同じ値で割った。これが平均出現回数である。各木で個数が0か1なら、右辺は $A$ が出る木の確率の和にもなる。上の例では $Z(z)=4z^2$ なので $Z'(1)/Z(1)=8/4=2$。outside でも $Z=\alpha(A)^2$ を微分して $\beta(A)=2\alpha(A)=4$、したがって $\alpha(A)\beta(A)/Z=2$ と同じ回数が得られる。
 \task{「子の列」を集合に置き換えると、上の例では何を失うか。}\ans{同じ $A$ の2番目の出現が消え、順方向の積も逆方向の加算も変わる。}
-\unit{24:33}{対数表で backprop すると何が返るか}
-実装と旧教科書の多くの式は対数の表を使う。$a=\log\alpha(A)$、$\ell=\log Z$ とする。$Z>0,\ \alpha(A)>0$ の範囲で連鎖律を使うと
+\unit{24:33}{なぜ SCFG の outside と逆伝播が一致するか}
+確率文脈自由文法（SCFG）の2分岐規則で紙面5の和を開こう。長さ $n$ の入力で $B[i,j)$ は境界 $i$ から $j$ までの部分列を作る項目（右端を含まない）。開始記号を $S$、規則 $A\to BC$ の確率を $w(A\to BC)$ とする。穴 $B[i,j)$ は左の子か右の子なので
+\begin{align*}
+\beta(B[i,j))={}&\mathbf{1}_{B[i,j)=S[0,n)}\\
+&+\sum_{A\to BC}\sum_{k=j+1}^{n}\beta(A[i,k))\,w(A\to BC)\,\alpha(C[j,k))\\
+&+\sum_{A\to CB}\sum_{h=0}^{i-1}\beta(A[h,j))\,w(A\to CB)\,\alpha(C[h,i)).
+\end{align*}
+各和は該当する全規則にわたる。子は空の部分列を作らないとした。第2行では右隣、第3行では左隣が兄弟で、その部分木を全て足すと $\alpha(C[\cdot,\cdot))$ になる。
+
+\textbf{同じ2項を微分で得る。} $q=B[i,j)$ とし、inside 表の値 $\alpha(q)$ に対する出力 $Z$ の微分を $\bar\alpha(q)$ と書く。親 $p$ の inside 式で $\alpha(q)$ を直接使う項だけを微分した値を $D_{pq}$ とする。積の微分と連鎖律より
 \[
-\frac{\partial\ell}{\partial a}
-=\underbrace{\frac{1}{Z}}_{\partial\ell/\partial Z}
-\underbrace{\beta(A)}_{\partial Z/\partial\alpha(A)}
-\underbrace{\alpha(A)}_{\partial\alpha(A)/\partial a}.
+D_{pq}=\sum_{e:\,p\leftarrow C_e}\sum_{i:\,c_i=q}w_e\prod_{j\ne i}\alpha(c_j),
+\qquad
+\bar\alpha(q)=\mathbf{1}_{q=r}+\sum_p\bar\alpha(p)D_{pq}.
 \]
-したがって、実数の計算の出力 $Z$ を逆伝播すると実数 outside $\beta$、対数の出力 $\log Z$ を対数 inside まで逆伝播すると期待出現回数が得られる。教科書の log outside 表に保存する $\log\beta$ は、後者の微分とは別の量である。
-\par\textbf{数値で照合。} 紙面5の $A$ について $\alpha=2,\beta=12,Z=30$。実数 outside は12、log outside は $\log12$、対数どうしの微分は $24/30=0.8$。
-\task{兄弟の inside を0とした場合、子への寄与を「親の積÷注目する子の値」で計算して安全か。}\ans{注目する子が0なら $0/0$ が生じる。紙面5のように他の子だけを掛ければよい。$Z=1+5X$ なら $X=0$ でも $\partial Z/\partial X=5$。}
+例えば第2行の親では、積 $w(A\to BC)\alpha(B[i,j))\alpha(C[j,k))$ の微分が $w(A\to BC)\alpha(C[j,k))$。第3行も左の兄弟が残る。紙面5の式は $\beta(q)=\mathbf{1}_{q=r}+\sum_p\beta(p)D_{pq}$。根では両方1、親から子へ順に同じ和を取るので全項目で $\boxed{\beta(q)=\bar\alpha(q)}$。
+
+\textbf{対数を使う場合。} $Z,\alpha(q)>0$ なら連鎖律より
+$\partial\log Z/\partial\log\alpha(q)=\alpha(q)\beta(q)/Z$。紙面5では $2\cdot12/30=0.8$（期待出現回数）、実数 outside は12、対数 outside は $\log 12$。
 \unit{11:41／14:59}{BE の穴と「微分する穴」を分ける}
 \begin{center}\includegraphics[width=.68\linewidth,height=38mm,keepaspectratio]{04_arc_case1.png}\end{center}
 横軸は塩基位置。上の弧は固定対、下は追加対。20塩基例では $b=\mathrm{BE}(1,14;4,11)$ は $[1,4]\cup[11,14]$ の2本の腕を扱う。$u=\mathrm{WI}(5,5)$ が5番を、$v=\mathrm{VP}(6,17)$ がこの導出で $[6,10]\cup[15,17]$ を担当する。ここで $u,v$ は部分問題の名前である。
